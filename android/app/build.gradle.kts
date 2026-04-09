@@ -28,6 +28,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Google Maps
+        manifestPlaceholders["com.google.android.geo.API_KEY"] = "AIzaSyDemoKeyChangeThis123456789"
     }
 
     buildTypes {

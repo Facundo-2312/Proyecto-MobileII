@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Permisos de ubicación -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FoodFinder necesita acceso a tu ubicación para mostrar restaurantes cercanos</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>FoodFinder necesita acceso a tu ubicación para mostrar restaurantes cercanos</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FoodFinder necesita acceso a tu ubicación para mostrar restaurantes cercanos</string>
 </dict>
 </plist>
