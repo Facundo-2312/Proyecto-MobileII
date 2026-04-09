@@ -13,7 +13,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Map<String, dynamic>> _restaurants = [];
   String? _selectedRestaurant;
   List<Map<String, dynamic>> _menuItems = [];
-  Map<String, int> _cart = {};
+  final Map<String, int> _cart = {};
 
   @override
   void initState() {
@@ -22,8 +22,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _loadRestaurants() async {
-    final db = await _db.database;
-    final restaurants = await db.query('restaurants');
+    final restaurants = await _db.getRestaurants();
     setState(() {
       _restaurants = restaurants;
       if (_restaurants.isNotEmpty) {
@@ -62,14 +61,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
             })
         .toList();
 
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await _db.createOrder('user_1', _selectedRestaurant!, restaurantName, items);
+      if (!mounted) return;
       setState(() => _cart.clear());
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('✅ Pedido guardado en la BD')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     }

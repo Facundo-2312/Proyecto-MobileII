@@ -1,10 +1,45 @@
 import 'package:flutter/material.dart';
+import 'database_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _db = DatabaseService();
+  Map<String, dynamic>? _user;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await _db.getUser('user_1');
+    if (!mounted) return;
+    setState(() {
+      _user = user;
+      _loading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final name = _user?['name'] as String? ?? 'Usuario Demo';
+    final email = _user?['email'] as String? ?? 'demo@foodfinder.com';
+    final phone = _user?['phone'] as String? ?? '+598 9 1234 567';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mi Perfil'),
@@ -33,18 +68,18 @@ class ProfileScreen extends StatelessWidget {
                     child: const Icon(Icons.person, size: 40, color: Colors.orange),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Juan Pérez',
-                    style: TextStyle(
+                  Text(
+                    name,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'juan@email.com',
-                    style: TextStyle(color: Colors.white70),
+                  Text(
+                    email,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -59,9 +94,9 @@ class ProfileScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  _buildInfoTile('Teléfono', '+34 666 777 888', Icons.phone),
-                  _buildInfoTile('Dirección', 'Calle Principal 123, Madrid', Icons.location_on),
-                  _buildInfoTile('Ciudad', 'Madrid, España', Icons.location_city),
+                  _buildInfoTile('Teléfono', phone, Icons.phone),
+                  _buildInfoTile('Dirección', 'Calle Principal 123, Rivera', Icons.location_on),
+                  _buildInfoTile('Ciudad', 'Rivera, Uruguay', Icons.location_city),
                   const SizedBox(height: 24),
                   const Text(
                     'Configuración',

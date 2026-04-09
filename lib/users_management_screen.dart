@@ -38,21 +38,31 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       return;
     }
 
+    if (_users.length >= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solo puedes crear hasta dos usuarios manualmente')),
+      );
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await _db.createUser(
         _nameController.text,
         _emailController.text,
         _phoneController.text,
       );
+      if (!mounted) return;
       _nameController.clear();
       _emailController.clear();
       _phoneController.clear();
-      _loadUsers();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Usuario creado correctamente')),
+      await _loadUsers();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('✅ Usuario creado y guardado en la base de datos')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     }
@@ -109,20 +119,35 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _createUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text(
-                    'Crear Usuario',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
+              Builder(builder: (buttonContext) {
+                final canCreate = _users.length < 2;
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: canCreate ? _createUser : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text(
+                          'Crear Usuario',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    if (!canCreate)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          'Máximo de 2 usuarios manuales alcanzado.',
+                          style: TextStyle(color: Colors.red[700], fontSize: 12),
+                        ),
+                      ),
+                  ],
+                );
+              }),
               const SizedBox(height: 32),
               const Text(
                 'Usuarios en el Sistema',
