@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart'
+    if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'app_constants.dart';
 
 class LocationService {

@@ -1,4 +1,5 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart'
+    if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'restaurant_model.dart';
 import 'app_constants.dart';
 
@@ -43,12 +44,14 @@ class RestaurantService {
   }) {
     _ensureInitialized();
 
-    final nearby = _restaurants
-        .where((restaurant) {
-          final distance = restaurant.getDistanceInKm(userLocation);
-          return distance <= radiusKm;
-        })
-        .toList();
+    final nearby = _restaurants.where((restaurant) {
+      final distance = restaurant.getDistanceInKm(userLocation);
+      return distance <= radiusKm;
+    }).toList();
+
+    if (nearby.isEmpty) {
+      return _generateFictitiousRestaurants(userLocation);
+    }
 
     nearby.sort((a, b) {
       final distA = a.getDistanceInKm(userLocation);
@@ -59,15 +62,64 @@ class RestaurantService {
     return nearby;
   }
 
+  List<Restaurant> _generateFictitiousRestaurants(LatLng userLocation) {
+    final names = [
+      'Local Ficticio 1',
+      'Bistró Ficticio',
+      'Cafetería Ficticia',
+      'Food Truck Ficticio',
+      'Punto de Comida Ficticio',
+    ];
+
+    final types = [
+      'Cafetería',
+      'Comida Rápida',
+      'Internacional',
+      'Vegano',
+      'Postres',
+    ];
+
+    final offsets = [
+      [0.0035, 0.0025],
+      [-0.0030, -0.0020],
+      [0.0020, -0.0030],
+      [-0.0025, 0.0030],
+      [0.0015, 0.0015],
+    ];
+
+    return List<Restaurant>.generate(names.length, (index) {
+      final offset = offsets[index % offsets.length];
+      final position = LatLng(
+        userLocation.latitude + offset[0],
+        userLocation.longitude + offset[1],
+      );
+      return Restaurant(
+        id: 'ficticio_${index + 1}',
+        name: names[index],
+        type: types[index],
+        location: position,
+        rating: 4.0 + (index * 0.1),
+        imageUrl:
+            'https://via.placeholder.com/300x200?text=${Uri.encodeComponent(names[index])}',
+        address: 'Calle Falsa ${100 + index}, Cerca de ti',
+        phoneNumber: '+598 99 000 00${index + 1}',
+        description:
+            'Local ficticio generado cerca de tu ubicación para mostrar opciones en el mapa.',
+      );
+    });
+  }
+
   /// Busca restaurantes por nombre o tipo
   List<Restaurant> searchRestaurants(String query) {
     _ensureInitialized();
 
     final searchLower = query.toLowerCase();
     return _restaurants
-        .where((restaurant) =>
-            restaurant.name.toLowerCase().contains(searchLower) ||
-            restaurant.type.toLowerCase().contains(searchLower))
+        .where(
+          (restaurant) =>
+              restaurant.name.toLowerCase().contains(searchLower) ||
+              restaurant.type.toLowerCase().contains(searchLower),
+        )
         .toList();
   }
 
@@ -96,8 +148,9 @@ class RestaurantService {
     _ensureInitialized();
 
     return _restaurants
-        .where((restaurant) =>
-            restaurant.type.toLowerCase() == type.toLowerCase())
+        .where(
+          (restaurant) => restaurant.type.toLowerCase() == type.toLowerCase(),
+        )
         .toList();
   }
 }

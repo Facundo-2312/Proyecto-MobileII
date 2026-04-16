@@ -1,4 +1,5 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart'
+    if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'dart:math' as math;
 
 class Restaurant {
@@ -31,7 +32,8 @@ class Restaurant {
     final double dLat = _toRadians(location.latitude - userLocation.latitude);
     final double dLng = _toRadians(location.longitude - userLocation.longitude);
 
-    final double a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
+    final double a =
+        (math.sin(dLat / 2) * math.sin(dLat / 2)) +
         (math.cos(_toRadians(userLocation.latitude)) *
             math.cos(_toRadians(location.latitude)) *
             math.sin(dLng / 2) *
@@ -50,10 +52,7 @@ class Restaurant {
       id: json['id'] as String,
       name: json['name'] as String,
       type: json['type'] as String,
-      location: LatLng(
-        json['latitude'] as double,
-        json['longitude'] as double,
-      ),
+      location: LatLng(json['latitude'] as double, json['longitude'] as double),
       rating: (json['rating'] as num).toDouble(),
       imageUrl: json['imageUrl'] as String,
       address: json['address'] as String,
