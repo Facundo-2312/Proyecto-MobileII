@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'
     if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlng;
 import 'dart:async';
@@ -53,12 +53,11 @@ class _MapScreenState extends State<MapScreen> {
     try {
       await restaurantService.initialize();
       await _updateLocation();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Error al inicializar mapa: $e');
+      debugPrintStack(stackTrace: stackTrace);
       if (mounted) {
         setState(() {
-          userLocation = defaultLocation;
-          nearbyRestaurants = restaurantService.getAllRestaurants();
-          _updateMarkers();
           isLoading = false;
         });
       }
@@ -73,16 +72,16 @@ class _MapScreenState extends State<MapScreen> {
 
     // Obtener restaurantes cercanos
     final nearby = restaurantService.getNearbyRestaurants(effectiveLocation);
-
+    
     // Si no hay cercanos, traer todos
-    final restaurantsToLoad = nearby.isNotEmpty
-        ? nearby
+    final restaurantsToLoad = nearby.isNotEmpty 
+        ? nearby 
         : restaurantService.getAllRestaurants();
 
     setState(() {
       userLocation = effectiveLocation;
       nearbyRestaurants = restaurantsToLoad;
-      _updateMarkers();
+      markers = _buildMarkers();
       isLoading = false;
     });
 
@@ -94,10 +93,19 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
   }
-
   void _updateMarkers() {
-    if (userLocation == null) {
+    if (!mounted) {
       return;
+    }
+
+    setState(() {
+      markers = _buildMarkers();
+    });
+  }
+
+  Set<Marker> _buildMarkers() {
+    if (userLocation == null) {
+      return {};
     }
 
     final currentLocation = simulatedUserLocation ?? userLocation!;
@@ -142,9 +150,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    setState(() {
-      markers = newMarkers;
-    });
+    return newMarkers;
   }
 
   void _showRestaurantPopup(Restaurant restaurant, double distance) {
@@ -173,10 +179,7 @@ class _MapScreenState extends State<MapScreen> {
     if (userLocation == null) return;
 
     final route = _buildRoutePoints(userLocation!, restaurant.location);
-    final routeInfo = RouteService.getRouteInfo(
-      userLocation!,
-      restaurant.location,
-    );
+    final routeInfo = RouteService.getRouteInfo(userLocation!, restaurant.location);
 
     setState(() {
       selectedRestaurant = restaurant;
@@ -205,6 +208,7 @@ class _MapScreenState extends State<MapScreen> {
       isNavigating = true;
       navigationProgress = 0.0;
       simulatedUserLocation = userLocation;
+      markers = _buildMarkers();
     });
 
     // Simular actualización de GPS cada 500ms
@@ -225,8 +229,8 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         navigationProgress = nextProgress;
         simulatedUserLocation = nextLocation;
+        markers = _buildMarkers();
       });
-      _updateMarkers();
     });
   }
 
@@ -236,8 +240,8 @@ class _MapScreenState extends State<MapScreen> {
       isNavigating = false;
       navigationProgress = 0.0;
       simulatedUserLocation = null;
+      markers = _buildMarkers();
     });
-    _updateMarkers();
   }
 
   void _toggleNavigation() {
@@ -334,29 +338,6 @@ class _MapScreenState extends State<MapScreen> {
           ? const Center(child: CircularProgressIndicator(color: Colors.orange))
           : LayoutBuilder(
               builder: (context, constraints) {
-                if (kIsWeb) {
-                  if (showList) {
-                    return RestaurantListWidget(
-                      restaurants: nearbyRestaurants.isEmpty
-                          ? restaurantService.getAllRestaurants()
-                          : nearbyRestaurants,
-                      onRefresh: _updateLocation,
-                      onTap: _navigateToDetails,
-                    );
-                  }
-
-                  final isWideWeb = constraints.maxWidth >= 1000;
-                  if (isWideWeb) {
-                    return Row(
-                      children: [
-                        Expanded(child: _buildMapContent()),
-                        SizedBox(width: 360, child: _buildSidePanel()),
-                      ],
-                    );
-                  }
-                  return _buildMapContent();
-                }
-
                 final isWide = constraints.maxWidth >= 800;
                 if (isWide) {
                   return Row(
@@ -429,30 +410,32 @@ class _MapScreenState extends State<MapScreen> {
                     size: 36,
                   ),
                 ),
-                ...restaurantsToShow.map((restaurant) {
-                  final isSelected = restaurant.id == selectedRestaurantId;
-                  return fm.Marker(
-                    width: isSelected ? 46 : 40,
-                    height: isSelected ? 46 : 40,
-                    point: latlng.LatLng(
-                      restaurant.location.latitude,
-                      restaurant.location.longitude,
-                    ),
-                    child: GestureDetector(
-                      onTap: () {
-                        final distance = userLocation != null
-                            ? restaurant.getDistanceInKm(userLocation!)
-                            : 0.0;
-                        _showRestaurantPopup(restaurant, distance);
-                      },
-                      child: Icon(
-                        Icons.location_on,
-                        color: isSelected ? Colors.red : Colors.orange,
-                        size: isSelected ? 44 : 36,
+                ...restaurantsToShow.map(
+                  (restaurant) {
+                    final isSelected = restaurant.id == selectedRestaurantId;
+                    return fm.Marker(
+                      width: isSelected ? 46 : 40,
+                      height: isSelected ? 46 : 40,
+                      point: latlng.LatLng(
+                        restaurant.location.latitude,
+                        restaurant.location.longitude,
                       ),
-                    ),
-                  );
-                }),
+                      child: GestureDetector(
+                        onTap: () {
+                          final distance = userLocation != null
+                              ? restaurant.getDistanceInKm(userLocation!)
+                              : 0.0;
+                          _showRestaurantPopup(restaurant, distance);
+                        },
+                        child: Icon(
+                          Icons.location_on,
+                          color: isSelected ? Colors.red : Colors.orange,
+                          size: isSelected ? 44 : 36,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             if (routePoints.isNotEmpty)
@@ -555,8 +538,7 @@ class _MapScreenState extends State<MapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
@@ -604,10 +586,9 @@ class _MapScreenState extends State<MapScreen> {
                                           value: navigationProgress,
                                           minHeight: 6,
                                           backgroundColor: Colors.grey[300],
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.orange[700]!,
-                                              ),
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.orange[700]!,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -652,7 +633,11 @@ class _MapScreenState extends State<MapScreen> {
                             const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Icons.close),
-                              onPressed: _clearRoute,
+                              onPressed: () {
+                                setState(() {
+                                  _clearRoute();
+                                });
+                              },
                               color: Colors.grey[700],
                             ),
                           ],
@@ -809,8 +794,8 @@ class _MapScreenState extends State<MapScreen> {
                                         backgroundColor: Colors.grey[300],
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              Colors.orange[700]!,
-                                            ),
+                                          Colors.orange[700]!,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
@@ -835,7 +820,9 @@ class _MapScreenState extends State<MapScreen> {
                       ElevatedButton.icon(
                         onPressed: _toggleNavigation,
                         icon: Icon(
-                          isNavigating ? Icons.stop_circle : Icons.navigation,
+                          isNavigating
+                              ? Icons.stop_circle
+                              : Icons.navigation,
                         ),
                         label: Text(
                           isNavigating
@@ -843,9 +830,8 @@ class _MapScreenState extends State<MapScreen> {
                               : 'Iniciar navegación',
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isNavigating
-                              ? Colors.red
-                              : Colors.orange,
+                          backgroundColor:
+                              isNavigating ? Colors.red : Colors.orange,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
@@ -906,9 +892,9 @@ class _MapScreenState extends State<MapScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selectedRestaurantId == restaurant.id
-                ? Colors.orange
-                : Colors.grey[300]!,
+            color: selectedRestaurantId == restaurant.id 
+              ? Colors.orange 
+              : Colors.grey[300]!,
             width: selectedRestaurantId == restaurant.id ? 2 : 1,
           ),
           color: Colors.white,

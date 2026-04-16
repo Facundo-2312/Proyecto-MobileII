@@ -19,8 +19,13 @@ class RestaurantMarkerPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final popupWidth = (MediaQuery.of(context).size.width - 32).clamp(
+      0.0,
+      260.0,
+    ).toDouble();
+
     return Container(
-      width: 260,
+      width: popupWidth,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -69,7 +74,10 @@ class RestaurantMarkerPopup extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   restaurant.address,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -82,7 +90,10 @@ class RestaurantMarkerPopup extends StatelessWidget {
                       icon: Icons.location_on,
                       label: '${distance.toStringAsFixed(2)} km',
                     ),
-                    _InfoChip(icon: Icons.star, label: '${restaurant.rating}'),
+                    _InfoChip(
+                      icon: Icons.star,
+                      label: '${restaurant.rating}',
+                    ),
                     _InfoChip(
                       icon: Icons.restaurant_menu,
                       label: restaurant.type,
@@ -134,7 +145,10 @@ class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _InfoChip({required this.icon, required this.label});
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -19,8 +19,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Pizzeria+Morosoli',
     'address': 'Avenida Italia 2960, Montevideo',
     'phoneNumber': '+598 2 406 67 67',
-    'description':
-        'Auténtica pizzería italiana con hornos de leña tradicionales',
+    'description': 'Auténtica pizzería italiana con hornos de leña tradicionales',
   },
   {
     'id': '2',
@@ -56,8 +55,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Parrilla+Asadito',
     'address': 'Calle Peatonal Sarandí 642, Centro',
     'phoneNumber': '+598 2 915 67 89',
-    'description':
-        'Parrilla de carnes uruguayas de la mejor calidad a las brasas',
+    'description': 'Parrilla de carnes uruguayas de la mejor calidad a las brasas',
   },
   {
     'id': '5',
@@ -69,8 +67,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Burger+House',
     'address': 'Avenida 18 de Julio 2089, Centro',
     'phoneNumber': '+598 2 908 34 56',
-    'description':
-        'Hamburguesas gourmet con ingredientes de la mejor selección',
+    'description': 'Hamburguesas gourmet con ingredientes de la mejor selección',
   },
   {
     'id': '6',
@@ -79,12 +76,10 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'latitude': -34.9030,
     'longitude': -56.1590,
     'rating': 4.8,
-    'imageUrl':
-        'https://via.placeholder.com/300x200?text=Mariscos+Mar+del+Plata',
+    'imageUrl': 'https://via.placeholder.com/300x200?text=Mariscos+Mar+del+Plata',
     'address': 'Rambla República de Argentina 300, Rambla',
     'phoneNumber': '+598 2 928 12 34',
-    'description':
-        'Pescados y mariscos frescos directo del puerto de Montevideo',
+    'description': 'Pescados y mariscos frescos directo del puerto de Montevideo',
   },
   {
     'id': '7',
@@ -96,8 +91,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Pasta+Casera',
     'address': 'Calle Mercedes 1387, Centro',
     'phoneNumber': '+598 2 916 89 01',
-    'description':
-        'Pasta fresca hecha diariamente con recetas tradicionales italianas',
+    'description': 'Pasta fresca hecha diariamente con recetas tradicionales italianas',
   },
   {
     'id': '8',
@@ -109,8 +103,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Wok+Roll+Oriental',
     'address': 'Calle Yi 1447, Pocitos',
     'phoneNumber': '+598 2 921 45 67',
-    'description':
-        'Comida oriental fusión con ingredientes frescos y auténticos',
+    'description': 'Comida oriental fusión con ingredientes frescos y auténticos',
   },
   {
     'id': '9',
@@ -122,8 +115,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Benedetto+Steakhouse',
     'address': 'Don Pedro de Ceballos 1070, Rivera',
     'phoneNumber': '+598 2 123 45 67',
-    'description':
-        'Cerrado · Abre a las 11 a. m. Muy buena parrilla a una cuadra de la calle principal de Rivera.',
+    'description': 'Cerrado · Abre a las 11 a. m. Muy buena parrilla a una cuadra de la calle principal de Rivera.',
   },
   {
     'id': '10',
@@ -135,8 +127,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Morano+Restaurant',
     'address': 'Av. Sarandí 825, Rivera',
     'phoneNumber': '+598 2 234 56 78',
-    'description':
-        'Cerrado · Abre a las 8:30 a. m. Servicio cuidado en un ambiente clásico.',
+    'description': 'Cerrado · Abre a las 8:30 a. m. Servicio cuidado en un ambiente clásico.',
   },
   {
     'id': '11',
@@ -148,8 +139,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Lo+de+Beto',
     'address': 'Don Pedro de Ceballos 1175, Rivera',
     'phoneNumber': '+598 2 345 67 89',
-    'description':
-        'Cerrado · Abre a las 7 p. m. Parrilla reconocida por sus cortes y ambiente relajado.',
+    'description': 'Cerrado · Abre a las 7 p. m. Parrilla reconocida por sus cortes y ambiente relajado.',
   },
   {
     'id': '12',
@@ -161,8 +151,7 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=Gardel+Restaurante',
     'address': 'Paysandú 1170, Rivera',
     'phoneNumber': '+598 2 456 78 90',
-    'description':
-        'Cerrado · Abre a las 7 p. m. Parrillada de estilo local con música y buenos cortes.',
+    'description': 'Cerrado · Abre a las 7 p. m. Parrillada de estilo local con música y buenos cortes.',
   },
   {
     'id': '13',
@@ -174,7 +163,6 @@ const List<Map<String, dynamic>> mockRestaurants = [
     'imageUrl': 'https://via.placeholder.com/300x200?text=La+Perdiz',
     'address': 'Av. Sepé 51, Rivera',
     'phoneNumber': '+598 2 567 89 01',
-    'description':
-        'Cerrado · Abre a las 12 p. m. Cocina uruguaya tradicional con platos caseros.',
+    'description': 'Cerrado · Abre a las 12 p. m. Cocina uruguaya tradicional con platos caseros.',
   },
 ];
