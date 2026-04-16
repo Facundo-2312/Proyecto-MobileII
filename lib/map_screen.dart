@@ -56,6 +56,9 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          userLocation = defaultLocation;
+          nearbyRestaurants = restaurantService.getAllRestaurants();
+          _updateMarkers();
           isLoading = false;
         });
       }
@@ -107,9 +110,7 @@ class _MapScreenState extends State<MapScreen> {
         infoWindow: InfoWindow(
           title: isNavigating ? 'Navegando...' : 'Tu ubicación',
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          isNavigating ? BitmapDescriptor.hueBlue : BitmapDescriptor.hueBlue,
-        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       ),
     );
 
@@ -208,24 +209,24 @@ class _MapScreenState extends State<MapScreen> {
 
     // Simular actualización de GPS cada 500ms
     navigationTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      final nextProgress = navigationProgress + 0.01;
+
+      if (nextProgress >= 1.0) {
+        _stopNavigation();
+        return;
+      }
+
+      final nextLocation = RouteService.interpolatePosition(
+        userLocation!,
+        selectedRestaurant!.location,
+        nextProgress,
+      );
+
       setState(() {
-        navigationProgress += 0.01; // Incremento ~1% cada 500ms
-
-        if (navigationProgress >= 1.0) {
-          _stopNavigation();
-          return;
-        }
-
-        // Interpolar la posición del usuario a lo largo de la ruta
-        simulatedUserLocation = RouteService.interpolatePosition(
-          userLocation!,
-          selectedRestaurant!.location,
-          navigationProgress,
-        );
-
-        // Actualizar marcador del usuario
-        _updateMarkers();
+        navigationProgress = nextProgress;
+        simulatedUserLocation = nextLocation;
       });
+      _updateMarkers();
     });
   }
 
@@ -333,6 +334,29 @@ class _MapScreenState extends State<MapScreen> {
           ? const Center(child: CircularProgressIndicator(color: Colors.orange))
           : LayoutBuilder(
               builder: (context, constraints) {
+                if (kIsWeb) {
+                  if (showList) {
+                    return RestaurantListWidget(
+                      restaurants: nearbyRestaurants.isEmpty
+                          ? restaurantService.getAllRestaurants()
+                          : nearbyRestaurants,
+                      onRefresh: _updateLocation,
+                      onTap: _navigateToDetails,
+                    );
+                  }
+
+                  final isWideWeb = constraints.maxWidth >= 1000;
+                  if (isWideWeb) {
+                    return Row(
+                      children: [
+                        Expanded(child: _buildMapContent()),
+                        SizedBox(width: 360, child: _buildSidePanel()),
+                      ],
+                    );
+                  }
+                  return _buildMapContent();
+                }
+
                 final isWide = constraints.maxWidth >= 800;
                 if (isWide) {
                   return Row(
@@ -628,11 +652,7 @@ class _MapScreenState extends State<MapScreen> {
                             const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Icons.close),
-                              onPressed: () {
-                                setState(() {
-                                  _clearRoute();
-                                });
-                              },
+                              onPressed: _clearRoute,
                               color: Colors.grey[700],
                             ),
                           ],

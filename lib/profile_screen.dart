@@ -10,6 +10,11 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _db = DatabaseService();
+  static const _defaultName = 'Facundo Mederos';
+  static const _defaultEmail = 'facundo.mederos@gmail.com';
+  static const _defaultPhone = '+598 9 1234 567';
+  static const _defaultAddress = 'Av. Italia 2629';
+  static const _defaultCity = 'Rivera, Uruguay';
   Map<String, dynamic>? _user;
   bool _loading = true;
 
@@ -28,17 +33,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  String _resolveProfileValue(String? currentValue, String defaultValue) {
+    if (currentValue == null) {
+      return defaultValue;
+    }
+
+    final normalizedValue = currentValue.trim().toLowerCase();
+    const demoValues = {
+      'usuario demo',
+      'demo@foodfinder.com',
+      'user_1',
+      '+598 9 1234 567',
+      'calle principal 123, rivera',
+    };
+
+    if (normalizedValue.isEmpty || demoValues.contains(normalizedValue)) {
+      return defaultValue;
+    }
+
+    return currentValue;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final name = _user?['name'] as String? ?? 'Usuario Demo';
-    final email = _user?['email'] as String? ?? 'demo@foodfinder.com';
-    final phone = _user?['phone'] as String? ?? '+598 9 1234 567';
+    final name = _resolveProfileValue(_user?['name'] as String?, _defaultName);
+    final email = _resolveProfileValue(
+      _user?['email'] as String?,
+      _defaultEmail,
+    );
+    final phone = _resolveProfileValue(
+      _user?['phone'] as String?,
+      _defaultPhone,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -77,10 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
+                  Text(email, style: const TextStyle(color: Colors.white70)),
                 ],
               ),
             ),
@@ -95,8 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildInfoTile('Teléfono', phone, Icons.phone),
-                  _buildInfoTile('Dirección', 'Calle Principal 123, Rivera', Icons.location_on),
-                  _buildInfoTile('Ciudad', 'Rivera, Uruguay', Icons.location_city),
+                  _buildInfoTile('Dirección', _defaultAddress, Icons.location_on),
+                  _buildInfoTile('Ciudad', _defaultCity, Icons.location_city),
                   const SizedBox(height: 24),
                   const Text(
                     'Configuración',
@@ -148,8 +175,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
@@ -165,7 +198,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         contentPadding: EdgeInsets.zero,
         leading: Icon(icon, color: Colors.orange),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
