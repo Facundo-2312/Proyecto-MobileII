@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'
-    if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
+  if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlng;
@@ -9,7 +9,6 @@ import 'restaurant_model.dart';
 import 'app_constants.dart';
 import 'location_service.dart';
 import 'restaurant_service.dart';
-import 'restaurant_marker_popup.dart';
 import 'restaurant_list_widget.dart';
 import 'restaurant_details_screen.dart';
 import 'route_service.dart';
@@ -93,22 +92,14 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
   }
-  void _updateMarkers() {
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      markers = _buildMarkers();
-    });
-  }
 
   Set<Marker> _buildMarkers() {
-    if (userLocation == null) {
+    final baseUserLocation = userLocation;
+    if (baseUserLocation == null) {
       return {};
     }
 
-    final currentLocation = simulatedUserLocation ?? userLocation!;
+    final currentLocation = simulatedUserLocation ?? baseUserLocation;
     final newMarkers = <Marker>{};
 
     newMarkers.add(
@@ -127,8 +118,6 @@ class _MapScreenState extends State<MapScreen> {
         : nearbyRestaurants;
 
     for (var restaurant in restaurantsToMark) {
-      final distance = restaurant.getDistanceInKm(currentLocation);
-
       newMarkers.add(
         Marker(
           markerId: MarkerId(restaurant.id),
@@ -141,10 +130,7 @@ class _MapScreenState extends State<MapScreen> {
             snippet: restaurant.type,
           ),
           onTap: () {
-            setState(() {
-              selectedRestaurantId = restaurant.id;
-            });
-            _showRestaurantPopup(restaurant, distance);
+            _selectRestaurant(restaurant);
           },
         ),
       );
@@ -153,26 +139,11 @@ class _MapScreenState extends State<MapScreen> {
     return newMarkers;
   }
 
-  void _showRestaurantPopup(Restaurant restaurant, double distance) {
+  void _selectRestaurant(Restaurant restaurant) {
+    setState(() {
+      selectedRestaurantId = restaurant.id;
+    });
     _updateRouteTo(restaurant);
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: RestaurantMarkerPopup(
-          restaurant: restaurant,
-          distance: distance,
-          onNavigate: () {
-            Navigator.of(context).pop();
-            _toggleNavigation();
-          },
-          onDetails: () {
-            Navigator.of(context).pop();
-            _navigateToDetails(restaurant);
-          },
-        ),
-      ),
-    );
   }
 
   void _updateRouteTo(Restaurant restaurant) {
@@ -422,10 +393,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       child: GestureDetector(
                         onTap: () {
-                          final distance = userLocation != null
-                              ? restaurant.getDistanceInKm(userLocation!)
-                              : 0.0;
-                          _showRestaurantPopup(restaurant, distance);
+                          _selectRestaurant(restaurant);
                         },
                         child: Icon(
                           Icons.location_on,
