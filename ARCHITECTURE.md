@@ -66,9 +66,9 @@ Gestiona la lógica de aplicación independiente de la UI.
 
 #### Constants (`app_constants.dart`)
 ```dart
-- defaultLocation: LatLng       // Ubicación por defecto (Madrid)
-- searchRadiusKm: double        // Radio de búsqueda (5km)
-- mockRestaurants: List         // Datos simulados con 8 restaurantes
+- defaultLocation: LatLng       // Ubicación por defecto (Montevideo, Uruguay)
+- searchRadiusKm: double        // Radio de búsqueda (50km)
+- mockRestaurants: List         // Datos simulados con restaurantes de Uruguay
 ```
 
 ## Flujo de Datos
@@ -139,7 +139,7 @@ double getDistanceInKm(LatLng userLocation) {
 2. Si está denegado: Solicita permiso
 3. Si está denegado permanentemente: Abre configuración
 4. Si se obtiene: Procede con geolocalización
-5. Si falla: Usa ubicación por defecto (Madrid)
+5. Si falla: Usa ubicación por defecto (Montevideo, Uruguay)
 
 ## Optimizaciones
 

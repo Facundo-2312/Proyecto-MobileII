@@ -44,69 +44,23 @@ class RestaurantService {
   }) {
     _ensureInitialized();
 
-    final nearby = _restaurants.where((restaurant) {
-      final distance = restaurant.getDistanceInKm(userLocation);
-      return distance <= radiusKm;
-    }).toList();
-
-    if (nearby.isEmpty) {
-      return _generateFictitiousRestaurants(userLocation);
-    }
-
-    nearby.sort((a, b) {
+    final sortedByDistance = List<Restaurant>.from(_restaurants);
+    sortedByDistance.sort((a, b) {
       final distA = a.getDistanceInKm(userLocation);
       final distB = b.getDistanceInKm(userLocation);
       return distA.compareTo(distB);
     });
 
+    final nearby = sortedByDistance.where((restaurant) {
+      final distance = restaurant.getDistanceInKm(userLocation);
+      return distance <= radiusKm;
+    }).toList();
+
+    if (nearby.isEmpty) {
+      return sortedByDistance.take(5).toList();
+    }
+
     return nearby;
-  }
-
-  List<Restaurant> _generateFictitiousRestaurants(LatLng userLocation) {
-    final names = [
-      'Local Ficticio 1',
-      'Bistró Ficticio',
-      'Cafetería Ficticia',
-      'Food Truck Ficticio',
-      'Punto de Comida Ficticio',
-    ];
-
-    final types = [
-      'Cafetería',
-      'Comida Rápida',
-      'Internacional',
-      'Vegano',
-      'Postres',
-    ];
-
-    final offsets = [
-      [0.0035, 0.0025],
-      [-0.0030, -0.0020],
-      [0.0020, -0.0030],
-      [-0.0025, 0.0030],
-      [0.0015, 0.0015],
-    ];
-
-    return List<Restaurant>.generate(names.length, (index) {
-      final offset = offsets[index % offsets.length];
-      final position = LatLng(
-        userLocation.latitude + offset[0],
-        userLocation.longitude + offset[1],
-      );
-      return Restaurant(
-        id: 'ficticio_${index + 1}',
-        name: names[index],
-        type: types[index],
-        location: position,
-        rating: 4.0 + (index * 0.1),
-        imageUrl:
-            'https://via.placeholder.com/300x200?text=${Uri.encodeComponent(names[index])}',
-        address: 'Calle Falsa ${100 + index}, Cerca de ti',
-        phoneNumber: '+598 99 000 00${index + 1}',
-        description:
-            'Local ficticio generado cerca de tu ubicación para mostrar opciones en el mapa.',
-      );
-    });
   }
 
   /// Busca restaurantes por nombre o tipo

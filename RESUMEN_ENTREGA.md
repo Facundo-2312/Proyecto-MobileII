@@ -47,7 +47,7 @@ Se ha desarrollado exitosamente **FoodFinder**, una aplicación móvil completa 
 ### ✅ Permisos y Configuración
 - [x] Permisos de ubicación en Android
 - [x] Permisos de ubicación en iOS
-- [x] Fallback a ubicación por defecto (Madrid)
+- [x] Fallback a ubicación por defecto (Montevideo, Uruguay)
 - [x] Manejo de errores graceful
 
 ### ✅ Optimizaciones

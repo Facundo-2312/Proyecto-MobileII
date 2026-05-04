@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'
-  if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
+    if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlng;
@@ -71,10 +71,10 @@ class _MapScreenState extends State<MapScreen> {
 
     // Obtener restaurantes cercanos
     final nearby = restaurantService.getNearbyRestaurants(effectiveLocation);
-    
+
     // Si no hay cercanos, traer todos
-    final restaurantsToLoad = nearby.isNotEmpty 
-        ? nearby 
+    final restaurantsToLoad = nearby.isNotEmpty
+        ? nearby
         : restaurantService.getAllRestaurants();
 
     setState(() {
@@ -150,7 +150,10 @@ class _MapScreenState extends State<MapScreen> {
     if (userLocation == null) return;
 
     final route = _buildRoutePoints(userLocation!, restaurant.location);
-    final routeInfo = RouteService.getRouteInfo(userLocation!, restaurant.location);
+    final routeInfo = RouteService.getRouteInfo(
+      userLocation!,
+      restaurant.location,
+    );
 
     setState(() {
       selectedRestaurant = restaurant;
@@ -381,29 +384,27 @@ class _MapScreenState extends State<MapScreen> {
                     size: 36,
                   ),
                 ),
-                ...restaurantsToShow.map(
-                  (restaurant) {
-                    final isSelected = restaurant.id == selectedRestaurantId;
-                    return fm.Marker(
-                      width: isSelected ? 46 : 40,
-                      height: isSelected ? 46 : 40,
-                      point: latlng.LatLng(
-                        restaurant.location.latitude,
-                        restaurant.location.longitude,
+                ...restaurantsToShow.map((restaurant) {
+                  final isSelected = restaurant.id == selectedRestaurantId;
+                  return fm.Marker(
+                    width: isSelected ? 46 : 40,
+                    height: isSelected ? 46 : 40,
+                    point: latlng.LatLng(
+                      restaurant.location.latitude,
+                      restaurant.location.longitude,
+                    ),
+                    child: GestureDetector(
+                      onTap: () {
+                        _selectRestaurant(restaurant);
+                      },
+                      child: Icon(
+                        Icons.location_on,
+                        color: isSelected ? Colors.red : Colors.orange,
+                        size: isSelected ? 44 : 36,
                       ),
-                      child: GestureDetector(
-                        onTap: () {
-                          _selectRestaurant(restaurant);
-                        },
-                        child: Icon(
-                          Icons.location_on,
-                          color: isSelected ? Colors.red : Colors.orange,
-                          size: isSelected ? 44 : 36,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }),
               ],
             ),
             if (routePoints.isNotEmpty)
@@ -429,7 +430,7 @@ class _MapScreenState extends State<MapScreen> {
     return GoogleMap(
       onMapCreated: _onMapCreated,
       initialCameraPosition: CameraPosition(
-        target: userLocation ?? const LatLng(40.4168, -3.7038),
+        target: userLocation ?? defaultLocation,
         zoom: 14,
       ),
       markers: markers,
@@ -506,7 +507,8 @@ class _MapScreenState extends State<MapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
@@ -554,9 +556,10 @@ class _MapScreenState extends State<MapScreen> {
                                           value: navigationProgress,
                                           minHeight: 6,
                                           backgroundColor: Colors.grey[300],
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.orange[700]!,
-                                          ),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.orange[700]!,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -762,8 +765,8 @@ class _MapScreenState extends State<MapScreen> {
                                         backgroundColor: Colors.grey[300],
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                          Colors.orange[700]!,
-                                        ),
+                                              Colors.orange[700]!,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
@@ -788,9 +791,7 @@ class _MapScreenState extends State<MapScreen> {
                       ElevatedButton.icon(
                         onPressed: _toggleNavigation,
                         icon: Icon(
-                          isNavigating
-                              ? Icons.stop_circle
-                              : Icons.navigation,
+                          isNavigating ? Icons.stop_circle : Icons.navigation,
                         ),
                         label: Text(
                           isNavigating
@@ -798,8 +799,9 @@ class _MapScreenState extends State<MapScreen> {
                               : 'Iniciar navegación',
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              isNavigating ? Colors.red : Colors.orange,
+                          backgroundColor: isNavigating
+                              ? Colors.red
+                              : Colors.orange,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
@@ -860,9 +862,9 @@ class _MapScreenState extends State<MapScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selectedRestaurantId == restaurant.id 
-              ? Colors.orange 
-              : Colors.grey[300]!,
+            color: selectedRestaurantId == restaurant.id
+                ? Colors.orange
+                : Colors.grey[300]!,
             width: selectedRestaurantId == restaurant.id ? 2 : 1,
           ),
           color: Colors.white,

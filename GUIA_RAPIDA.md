@@ -80,8 +80,8 @@ flutter run --release
 ### ❌ "No me pide permisos de ubicación"
 **Solución**: Los permisos están configurados, solo aparecen si la app los necesita
 
-### ❌ "La app dice 'Ubicación en Madrid'"
-**Solución**: Es normal, es la ubicación por defecto. Activa los permisos en tu teléfono
+### ❌ "La app usa Montevideo como ubicación"
+**Solución**: Es normal cuando no hay permisos o no se puede obtener tu GPS. Activa ubicación y vuelve a actualizar.
 
 ### ❌ "Errores al compilar"
 **Solución**: 
@@ -93,19 +93,19 @@ flutter run
 
 ## 📊 Estructura de Datos
 
-### Restaurante (8 simulados)
+### Restaurante (mock de Uruguay)
 ```dart
 {
   id: "1",
-  name: "Pizzería Italia",
+  name: "Pizzería Morosoli",
   type: "Italiano",
-  latitude: 40.4200,
-  longitude: -3.7050,
-  rating: 4.5,
+  latitude: -34.8950,
+  longitude: -56.1640,
+  rating: 4.7,
   imageUrl: "...",
-  address: "Calle Gran Vía, 15",
-  phoneNumber: "+34 91 123 45 67",
-  description: "Auténtica comida italiana..."
+  address: "Avenida Italia 2960, Montevideo",
+  phoneNumber: "+598 2 406 67 67",
+  description: "Auténtica pizzería italiana con hornos de leña..."
 }
 ```
 

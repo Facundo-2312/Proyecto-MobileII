@@ -1,16 +1,16 @@
 # FoodFinder 🍽️
 
-Una aplicación móvil Flutter que te ayuda a encontrar restaurantes cercanos usando tu ubicación GPS y mostrarlos en un mapa interactivo.
+Una aplicación Flutter para descubrir restaurantes en Uruguay usando tu ubicación y mostrarlos en un mapa interactivo.
 
 ## Características ✨
 
-- **Mapa Interactivo**: Visualiza restaurantes cercanos en tiempo real con Google Maps
+- **Mapa Interactivo**: Visualiza restaurantes cercanos en tiempo real con Google Maps en mobile y OpenStreetMap en web
 - **Geolocalización GPS**: Obtiene automáticamente tu ubicación actual
-- **Datos Mock**: 8 restaurantes simulados con información completa
+- **Datos Mock**: 13 restaurantes simulados de Uruguay con información completa
 - **Lista de Restaurantes**: Alterna entre vista de mapa y lista de restaurantes
 - **Detalles del Restaurante**: Información completa con mapa integrado, teléfono y dirección
 - **Distancia Calculada**: Calcula automáticamente la distancia de cada restaurante
-- **Búsqueda Eficiente**: Radiode búsqueda de 5 km configurableoptimizado para la batería
+- **Búsqueda Eficiente**: Radio de búsqueda de 50 km y fallback a restaurantes reales ordenados por distancia
 
 ## Requisitos Técnicos
 
@@ -40,7 +40,9 @@ cd foodfinder
 flutter pub get
 ```
 
-### 3. Configurar Google Maps API
+### 3. Configurar el mapa
+
+En Android e iOS la app usa Google Maps. En web usa OpenStreetMap, por lo que no necesita API key.
 
 #### Android:
 1. Abre `android/app/build.gradle.kts`
@@ -100,7 +102,7 @@ lib/
 
 ### 4. Geolocalización
 - Solicita permisos automáticamente
-- Fallback a ubicación por defecto (Madrid)
+- Fallback a ubicación por defecto (Montevideo, Uruguay)
 - Actualización manual disponible
 
 ## Permisos Requeridos 🔐
@@ -129,16 +131,14 @@ lib/
 
 ## Datos Mock 🍴
 
-La aplicación incluye 8 restaurantes simulados:
+La aplicación incluye restaurantes simulados de Uruguay, con foco en Montevideo y Rivera:
 
-1. **Pizzería Italia** - Italiano (Madrid)
-2. **Sushi Paradise** - Japonés
-3. **Burger Deluxe** - Comida Rápida
-4. **El Tapas Ibérico** - Español
-5. **Wok Express** - Chino
-6. **Taco Fiesta** - Mexicano
-7. **Pasta Fresca** - Italiano
-8. **Grilled Steak House** - Carne
+1. **Pizzería Morosoli** - Italiano (Montevideo)
+2. **Chivitería El Corte** - Uruguayo (Montevideo)
+3. **Parrilla Asadito** - Carne (Montevideo)
+4. **Wok & Roll Oriental** - Asiático (Montevideo)
+5. **Benedetto Steakhouse** - Restaurante (Rivera)
+6. **La Perdiz** - Uruguaya (Rivera)
 
 ## Optimizaciones 🚄
 
@@ -167,7 +167,7 @@ La aplicación incluye 8 restaurantes simulados:
 ### No se obtiene la ubicación
 - Verifica que los permisos estén activados en el dispositivo
 - Comprueba que el servicio de ubicación esté habilitado
-- La app usará Madrid como ubicación por defecto si no hay permisos
+- La app usará Montevideo como ubicación por defecto si no hay permisos
 
 ### La app se congela
 - Reinicia el dispositivo
