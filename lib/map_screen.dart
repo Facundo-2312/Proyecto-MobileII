@@ -21,11 +21,13 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? mapController;
+  final fm.MapController webMapController = fm.MapController();
   final locationService = LocationService();
   final restaurantService = RestaurantService();
   int _routeRequestId = 0;
   StreamSubscription<LatLng>? _locationSubscription;
   bool _hasCenteredOnUser = false;
+  double _webZoom = 14;
 
   LatLng? userLocation;
   List<Restaurant> nearbyRestaurants = [];
@@ -33,6 +35,7 @@ class _MapScreenState extends State<MapScreen> {
   Set<Polyline> polylines = {};
   Restaurant? selectedRestaurant;
   List<LatLng> routePoints = [];
+  List<RouteOption> routeOptions = [];
   bool isLoading = true;
   String? selectedRestaurantId;
   bool showList = false;
@@ -40,6 +43,7 @@ class _MapScreenState extends State<MapScreen> {
   // Variables para navegación y simulación de GPS
   bool isNavigating = false;
   RouteInfo? currentRouteInfo;
+  int selectedRouteOptionIndex = 0;
 
   @override
   void initState() {
@@ -196,9 +200,17 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     setState(() {
+      final nextSelectedIndex =
+          selectedRouteOptionIndex < routePath.options.length
+          ? selectedRouteOptionIndex
+          : 0;
+      final activeOption = routePath.options[nextSelectedIndex];
+
       selectedRestaurant = restaurant;
-      routePoints = routePath.points;
-      currentRouteInfo = routePath.info;
+      routeOptions = routePath.options;
+      selectedRouteOptionIndex = nextSelectedIndex;
+      routePoints = activeOption.points;
+      currentRouteInfo = activeOption.info;
       polylines = {
         Polyline(
           polylineId: const PolylineId('route'),
@@ -246,8 +258,31 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       selectedRestaurant = null;
       routePoints = [];
+      routeOptions = [];
       polylines = {};
       currentRouteInfo = null;
+      selectedRouteOptionIndex = 0;
+    });
+  }
+
+  void _selectRouteOption(int index) {
+    if (index < 0 || index >= routeOptions.length) {
+      return;
+    }
+
+    final option = routeOptions[index];
+    setState(() {
+      selectedRouteOptionIndex = index;
+      routePoints = option.points;
+      currentRouteInfo = option.info;
+      polylines = {
+        Polyline(
+          polylineId: const PolylineId('route'),
+          color: Colors.orange,
+          width: 5,
+          points: routePoints,
+        ),
+      };
     });
   }
 
@@ -281,6 +316,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _centerMapOnUser(LatLng target, {bool force = false}) {
+    if (kIsWeb) {
+      if (_hasCenteredOnUser && !force) {
+        return;
+      }
+
+      webMapController.move(
+        latlng.LatLng(target.latitude, target.longitude),
+        _webZoom,
+      );
+      _hasCenteredOnUser = true;
+      return;
+    }
+
     if (mapController == null) {
       return;
     }
@@ -293,6 +341,36 @@ class _MapScreenState extends State<MapScreen> {
       CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 14)),
     );
     _hasCenteredOnUser = true;
+  }
+
+  void _zoomWebMap(double delta) {
+    if (!kIsWeb) {
+      return;
+    }
+
+    final nextZoom = (_webZoom + delta).clamp(4.0, 19.0);
+    final center = webMapController.camera.center;
+
+    setState(() {
+      _webZoom = nextZoom;
+    });
+
+    webMapController.move(center, _webZoom);
+  }
+
+  void _recenterWebMap() {
+    final currentLocation =
+        userLocation ?? locationService.getLastKnownLocation();
+
+    if (kIsWeb) {
+      webMapController.move(
+        latlng.LatLng(currentLocation.latitude, currentLocation.longitude),
+        _webZoom,
+      );
+      return;
+    }
+
+    _centerMapOnUser(currentLocation, force: true);
   }
 
   @override
@@ -362,77 +440,94 @@ class _MapScreenState extends State<MapScreen> {
           userLocation ?? locationService.getLastKnownLocation();
       final restaurantsToShow = _restaurantsForDisplay();
 
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(0),
-        child: fm.FlutterMap(
-          options: fm.MapOptions(
-            initialCenter: latlng.LatLng(
-              currentLocation.latitude,
-              currentLocation.longitude,
-            ),
-            initialZoom: 14,
-          ),
-          children: [
-            fm.TileLayer(
-              urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              subdomains: const ['a', 'b', 'c'],
-              userAgentPackageName: 'com.example.foodfinder',
-            ),
-            fm.MarkerLayer(
-              markers: [
-                fm.Marker(
-                  width: 40,
-                  height: 40,
-                  point: latlng.LatLng(
-                    currentLocation.latitude,
-                    currentLocation.longitude,
-                  ),
-                  child: const Icon(
-                    Icons.person_pin_circle,
-                    color: Colors.blue,
-                    size: 36,
-                  ),
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(0),
+            child: fm.FlutterMap(
+              mapController: webMapController,
+              options: fm.MapOptions(
+                initialCenter: latlng.LatLng(
+                  currentLocation.latitude,
+                  currentLocation.longitude,
                 ),
-                ...restaurantsToShow.map((restaurant) {
-                  final isSelected = restaurant.id == selectedRestaurantId;
-                  return fm.Marker(
-                    width: isSelected ? 46 : 40,
-                    height: isSelected ? 46 : 40,
-                    point: latlng.LatLng(
-                      restaurant.location.latitude,
-                      restaurant.location.longitude,
-                    ),
-                    child: GestureDetector(
-                      onTap: () {
-                        _selectRestaurant(restaurant);
-                      },
-                      child: Icon(
-                        Icons.location_on,
-                        color: isSelected ? Colors.red : Colors.orange,
-                        size: isSelected ? 44 : 36,
+                initialZoom: _webZoom,
+                onPositionChanged: (camera, hasGesture) {
+                  final nextZoom = camera.zoom;
+                  if (nextZoom != null && _webZoom != nextZoom) {
+                    setState(() {
+                      _webZoom = nextZoom;
+                    });
+                  }
+                },
+              ),
+              children: [
+                fm.TileLayer(
+                  urlTemplate:
+                      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  subdomains: const ['a', 'b', 'c'],
+                  userAgentPackageName: 'com.example.foodfinder',
+                ),
+                fm.MarkerLayer(
+                  markers: [
+                    fm.Marker(
+                      width: 40,
+                      height: 40,
+                      point: latlng.LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                      ),
+                      child: const Icon(
+                        Icons.person_pin_circle,
+                        color: Colors.blue,
+                        size: 36,
                       ),
                     ),
-                  );
-                }),
+                    ...restaurantsToShow.map((restaurant) {
+                      final isSelected = restaurant.id == selectedRestaurantId;
+                      return fm.Marker(
+                        width: isSelected ? 46 : 40,
+                        height: isSelected ? 46 : 40,
+                        point: latlng.LatLng(
+                          restaurant.location.latitude,
+                          restaurant.location.longitude,
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            _selectRestaurant(restaurant);
+                          },
+                          child: Icon(
+                            Icons.location_on,
+                            color: isSelected ? Colors.red : Colors.orange,
+                            size: isSelected ? 44 : 36,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+                if (routePoints.isNotEmpty)
+                  fm.PolylineLayer(
+                    polylines: [
+                      fm.Polyline(
+                        points: routePoints
+                            .map(
+                              (point) => latlng.LatLng(
+                                point.latitude,
+                                point.longitude,
+                              ),
+                            )
+                            .toList(),
+                        color: Colors.orange,
+                        strokeWidth: 5,
+                      ),
+                    ],
+                  ),
               ],
             ),
-            if (routePoints.isNotEmpty)
-              fm.PolylineLayer(
-                polylines: [
-                  fm.Polyline(
-                    points: routePoints
-                        .map(
-                          (point) =>
-                              latlng.LatLng(point.latitude, point.longitude),
-                        )
-                        .toList(),
-                    color: Colors.orange,
-                    strokeWidth: 5,
-                  ),
-                ],
-              ),
-          ],
-        ),
+          ),
+          Positioned(right: 16, top: 16, child: _buildWebZoomControls()),
+        ],
       );
     }
 
@@ -447,6 +542,42 @@ class _MapScreenState extends State<MapScreen> {
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
+    );
+  }
+
+  Widget _buildWebZoomControls() {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(14),
+      color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: () => _zoomWebMap(1),
+            icon: const Icon(Icons.add),
+            tooltip: 'Acercar',
+          ),
+          SizedBox(
+            width: 36,
+            child: Divider(height: 1, thickness: 1, color: Colors.grey[300]),
+          ),
+          IconButton(
+            onPressed: () => _zoomWebMap(-1),
+            icon: const Icon(Icons.remove),
+            tooltip: 'Alejar',
+          ),
+          SizedBox(
+            width: 36,
+            child: Divider(height: 1, thickness: 1, color: Colors.grey[300]),
+          ),
+          IconButton(
+            onPressed: _recenterWebMap,
+            icon: const Icon(Icons.my_location),
+            tooltip: 'Centrar en mi ubicación',
+          ),
+        ],
+      ),
     );
   }
 
@@ -543,6 +674,11 @@ class _MapScreenState extends State<MapScreen> {
     final currentLocation = userLocation!;
     final liveDistanceKm = restaurant.getDistanceInKm(currentLocation);
     final liveDistanceText = '${liveDistanceKm.toStringAsFixed(1)} km';
+    final activeRouteOption = routeOptions.isNotEmpty
+        ? routeOptions[selectedRouteOptionIndex]
+        : null;
+    final remainingDistanceText =
+        currentRouteInfo?.distanceText ?? liveDistanceText;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -610,6 +746,11 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
+                    'Estás a $remainingDistanceText de tu destino.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     isNavigating
                         ? 'La ruta se actualiza con tu ubicación en tiempo real.'
                         : 'Pulsa "Cómo llegar" para seguir la ruta desde tu ubicación actual.',
@@ -618,6 +759,32 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ),
+            if (routeOptions.length > 1) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Trayectos disponibles',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (int index = 0; index < routeOptions.length; index++)
+                    _buildRouteOptionChip(routeOptions[index], index),
+                ],
+              ),
+            ],
+            if (activeRouteOption != null &&
+                activeRouteOption.steps.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Cómo llegar',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...activeRouteOption.steps.take(4).map(_buildRouteStepTile),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -648,6 +815,89 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRouteOptionChip(RouteOption option, int index) {
+    final isSelected = index == selectedRouteOptionIndex;
+
+    return InkWell(
+      onTap: () => _selectRouteOption(index),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? Colors.orange
+                : Colors.orange.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              option.label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${option.info.distanceText} · ${option.info.durationText}',
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Colors.white : Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteStepTile(RouteStep step) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.alt_route, size: 16, color: Colors.orange),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.instruction,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${step.distanceText} · ${step.durationText}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

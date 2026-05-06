@@ -8,8 +8,35 @@ import 'package:http/http.dart' as http;
 class RoutePath {
   final List<LatLng> points;
   final RouteInfo info;
+  final List<RouteOption> options;
 
-  RoutePath({required this.points, required this.info});
+  RoutePath({required this.points, required this.info, required this.options});
+}
+
+class RouteStep {
+  final String instruction;
+  final String distanceText;
+  final String durationText;
+
+  RouteStep({
+    required this.instruction,
+    required this.distanceText,
+    required this.durationText,
+  });
+}
+
+class RouteOption {
+  final String label;
+  final List<LatLng> points;
+  final RouteInfo info;
+  final List<RouteStep> steps;
+
+  RouteOption({
+    required this.label,
+    required this.points,
+    required this.info,
+    required this.steps,
+  });
 }
 
 class RouteInfo {
@@ -89,6 +116,18 @@ class RouteService {
   static Future<RoutePath> fetchRoute(LatLng start, LatLng end) async {
     final fallbackPoints = generateRoutePoints(start, end);
     final fallbackInfo = getRouteInfo(start, end);
+    final fallbackOption = RouteOption(
+      label: 'Ruta principal',
+      points: fallbackPoints,
+      info: fallbackInfo,
+      steps: [
+        RouteStep(
+          instruction: 'Dirígete hacia tu destino',
+          distanceText: fallbackInfo.distanceText,
+          durationText: fallbackInfo.durationText,
+        ),
+      ],
+    );
 
     try {
       final routeUri = _routingBaseUri.replace(
@@ -97,68 +136,223 @@ class RouteService {
         queryParameters: const {
           'overview': 'full',
           'geometries': 'geojson',
-          'alternatives': 'false',
-          'steps': 'false',
+          'alternatives': 'true',
+          'steps': 'true',
         },
       );
 
-      final response = await http.get(routeUri).timeout(
-        const Duration(seconds: 8),
-      );
+      final response = await http
+          .get(routeUri)
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode != 200) {
-        return RoutePath(points: fallbackPoints, info: fallbackInfo);
+        return RoutePath(
+          points: fallbackPoints,
+          info: fallbackInfo,
+          options: [fallbackOption],
+        );
       }
 
       final decoded = jsonDecode(response.body);
       final routes = decoded['routes'];
 
       if (routes is! List || routes.isEmpty) {
-        return RoutePath(points: fallbackPoints, info: fallbackInfo);
+        return RoutePath(
+          points: fallbackPoints,
+          info: fallbackInfo,
+          options: [fallbackOption],
+        );
       }
 
-      final firstRoute = routes.first;
-      final geometry = firstRoute['geometry'];
-      final coordinates = geometry['coordinates'];
+      final options = <RouteOption>[];
 
-      if (coordinates is! List || coordinates.length < 2) {
-        return RoutePath(points: fallbackPoints, info: fallbackInfo);
-      }
+      for (int index = 0; index < routes.length; index++) {
+        final route = routes[index];
+        if (route is! Map<String, dynamic>) {
+          continue;
+        }
 
-      final points = coordinates
-          .whereType<List>()
-          .where((coordinate) => coordinate.length >= 2)
-          .map(
-            (coordinate) => LatLng(
-              (coordinate[1] as num).toDouble(),
-              (coordinate[0] as num).toDouble(),
-            ),
-          )
-          .toList();
+        final points = _parseRoutePoints(route);
+        if (points.length < 2) {
+          continue;
+        }
 
-      if (points.length < 2) {
-        return RoutePath(points: fallbackPoints, info: fallbackInfo);
-      }
-
-      final distanceKm = ((firstRoute['distance'] as num?)?.toDouble() ?? 0) /
-          1000;
-      final estimatedMinutes =
-          (((firstRoute['duration'] as num?)?.toDouble() ?? 0) / 60).round();
-
-      return RoutePath(
-        points: points,
-        info: routeInfoFromMetrics(
+        final distanceKm =
+            ((route['distance'] as num?)?.toDouble() ?? 0) / 1000;
+        final estimatedMinutes =
+            (((route['duration'] as num?)?.toDouble() ?? 0) / 60).round();
+        final info = routeInfoFromMetrics(
           distanceKm: distanceKm > 0 ? distanceKm : fallbackInfo.distanceKm,
           estimatedMinutes: estimatedMinutes > 0
               ? estimatedMinutes
               : fallbackInfo.estimatedMinutes,
-        ),
+        );
+
+        options.add(
+          RouteOption(
+            label: index == 0 ? 'Más rápida' : 'Alternativa ${index + 1}',
+            points: points,
+            info: info,
+            steps: _parseRouteSteps(route, info),
+          ),
+        );
+      }
+
+      if (options.isEmpty) {
+        return RoutePath(
+          points: fallbackPoints,
+          info: fallbackInfo,
+          options: [fallbackOption],
+        );
+      }
+
+      return RoutePath(
+        points: options.first.points,
+        info: options.first.info,
+        options: options,
       );
     } on TimeoutException {
-      return RoutePath(points: fallbackPoints, info: fallbackInfo);
+      return RoutePath(
+        points: fallbackPoints,
+        info: fallbackInfo,
+        options: [fallbackOption],
+      );
     } catch (_) {
-      return RoutePath(points: fallbackPoints, info: fallbackInfo);
+      return RoutePath(
+        points: fallbackPoints,
+        info: fallbackInfo,
+        options: [fallbackOption],
+      );
     }
+  }
+
+  static List<LatLng> _parseRoutePoints(Map<String, dynamic> route) {
+    final geometry = route['geometry'];
+    if (geometry is! Map<String, dynamic>) {
+      return const [];
+    }
+
+    final coordinates = geometry['coordinates'];
+    if (coordinates is! List || coordinates.length < 2) {
+      return const [];
+    }
+
+    return coordinates
+        .whereType<List>()
+        .where((coordinate) => coordinate.length >= 2)
+        .map(
+          (coordinate) => LatLng(
+            (coordinate[1] as num).toDouble(),
+            (coordinate[0] as num).toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  static List<RouteStep> _parseRouteSteps(
+    Map<String, dynamic> route,
+    RouteInfo fallbackInfo,
+  ) {
+    final legs = route['legs'];
+    if (legs is! List || legs.isEmpty) {
+      return [
+        RouteStep(
+          instruction: 'Dirígete hacia tu destino',
+          distanceText: fallbackInfo.distanceText,
+          durationText: fallbackInfo.durationText,
+        ),
+      ];
+    }
+
+    final steps = <RouteStep>[];
+
+    for (final leg in legs.whereType<Map<String, dynamic>>()) {
+      final rawSteps = leg['steps'];
+      if (rawSteps is! List) {
+        continue;
+      }
+
+      for (final step in rawSteps.whereType<Map<String, dynamic>>()) {
+        final distanceMeters = (step['distance'] as num?)?.toDouble() ?? 0;
+        final durationSeconds = (step['duration'] as num?)?.toDouble() ?? 0;
+        steps.add(
+          RouteStep(
+            instruction: _buildInstruction(step),
+            distanceText: _formatDistance(distanceMeters / 1000),
+            durationText: _formatDuration((durationSeconds / 60).round()),
+          ),
+        );
+      }
+    }
+
+    return steps.isEmpty
+        ? [
+            RouteStep(
+              instruction: 'Dirígete hacia tu destino',
+              distanceText: fallbackInfo.distanceText,
+              durationText: fallbackInfo.durationText,
+            ),
+          ]
+        : steps.take(5).toList();
+  }
+
+  static String _buildInstruction(Map<String, dynamic> step) {
+    final maneuver = step['maneuver'];
+    final name = (step['name'] as String?)?.trim() ?? '';
+    final maneuverType = maneuver is Map<String, dynamic>
+        ? (maneuver['type'] as String?)?.trim() ?? ''
+        : '';
+    final modifier = maneuver is Map<String, dynamic>
+        ? (maneuver['modifier'] as String?)?.trim() ?? ''
+        : '';
+
+    switch (maneuverType) {
+      case 'depart':
+        return name.isEmpty ? 'Sal desde tu ubicación' : 'Sal por $name';
+      case 'arrive':
+        return 'Llegarás a tu destino';
+      case 'turn':
+        final turnLabel = _translateModifier(modifier);
+        return name.isEmpty ? 'Gira $turnLabel' : 'Gira $turnLabel hacia $name';
+      case 'new name':
+      case 'continue':
+        return name.isEmpty ? 'Continúa recto' : 'Continúa por $name';
+      case 'merge':
+        return name.isEmpty ? 'Incorpórate a la vía' : 'Incorpórate a $name';
+      case 'roundabout':
+        return name.isEmpty ? 'Toma la rotonda' : 'Toma la rotonda hacia $name';
+      default:
+        return name.isEmpty ? 'Sigue el trayecto' : 'Sigue por $name';
+    }
+  }
+
+  static String _translateModifier(String modifier) {
+    switch (modifier) {
+      case 'left':
+        return 'a la izquierda';
+      case 'right':
+        return 'a la derecha';
+      case 'slight left':
+        return 'levemente a la izquierda';
+      case 'slight right':
+        return 'levemente a la derecha';
+      case 'sharp left':
+        return 'pronunciado a la izquierda';
+      case 'sharp right':
+        return 'pronunciado a la derecha';
+      case 'straight':
+        return 'recto';
+      default:
+        return 'por la vía indicada';
+    }
+  }
+
+  static String _formatDistance(double distanceKm) {
+    if (distanceKm < 1) {
+      return '${(distanceKm * 1000).round()} m';
+    }
+
+    return '${distanceKm.toStringAsFixed(1)} km';
   }
 
   /// Genera puntos intermedios para simular una ruta con GPS
@@ -214,7 +408,10 @@ class RouteService {
     double totalDistance = 0;
 
     for (int index = 0; index < points.length - 1; index++) {
-      final segmentDistance = calculateDistance(points[index], points[index + 1]);
+      final segmentDistance = calculateDistance(
+        points[index],
+        points[index + 1],
+      );
       segmentDistances.add(segmentDistance);
       totalDistance += segmentDistance;
     }
