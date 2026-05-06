@@ -24,6 +24,7 @@ class _MapScreenState extends State<MapScreen> {
   GoogleMapController? mapController;
   final locationService = LocationService();
   final restaurantService = RestaurantService();
+  int _routeRequestId = 0;
 
   LatLng? userLocation;
   List<Restaurant> nearbyRestaurants = [];
@@ -139,26 +140,30 @@ class _MapScreenState extends State<MapScreen> {
     return newMarkers;
   }
 
-  void _selectRestaurant(Restaurant restaurant) {
+  Future<void> _selectRestaurant(Restaurant restaurant) async {
     setState(() {
       selectedRestaurantId = restaurant.id;
     });
-    _updateRouteTo(restaurant);
+    await _updateRouteTo(restaurant);
   }
 
-  void _updateRouteTo(Restaurant restaurant) {
+  Future<void> _updateRouteTo(Restaurant restaurant) async {
     if (userLocation == null) return;
 
-    final route = _buildRoutePoints(userLocation!, restaurant.location);
-    final routeInfo = RouteService.getRouteInfo(
+    final requestId = ++_routeRequestId;
+    final routePath = await RouteService.fetchRoute(
       userLocation!,
       restaurant.location,
     );
 
+    if (!mounted || requestId != _routeRequestId) {
+      return;
+    }
+
     setState(() {
       selectedRestaurant = restaurant;
-      routePoints = route;
-      currentRouteInfo = routeInfo;
+      routePoints = routePath.points;
+      currentRouteInfo = routePath.info;
       polylines = {
         Polyline(
           polylineId: const PolylineId('route'),
@@ -194,9 +199,10 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      final nextLocation = RouteService.interpolatePosition(
-        userLocation!,
-        selectedRestaurant!.location,
+      final nextLocation = RouteService.interpolateAlongRoute(
+        routePoints.isNotEmpty
+            ? routePoints
+            : [userLocation!, selectedRestaurant!.location],
         nextProgress,
       );
 
@@ -233,20 +239,6 @@ class _MapScreenState extends State<MapScreen> {
       routePoints = [];
       polylines = {};
       currentRouteInfo = null;
-    });
-  }
-
-  List<LatLng> _buildRoutePoints(
-    LatLng start,
-    LatLng end, {
-    int segments = 10,
-  }) {
-    return List<LatLng>.generate(segments + 1, (index) {
-      final t = index / segments;
-      return LatLng(
-        start.latitude + (end.latitude - start.latitude) * t,
-        start.longitude + (end.longitude - start.longitude) * t,
-      );
     });
   }
 
