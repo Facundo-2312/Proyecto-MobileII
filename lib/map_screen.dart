@@ -6,7 +6,6 @@ import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlng;
 import 'dart:async';
 import 'restaurant_model.dart';
-import 'app_constants.dart';
 import 'location_service.dart';
 import 'restaurant_service.dart';
 import 'restaurant_list_widget.dart';
@@ -25,6 +24,8 @@ class _MapScreenState extends State<MapScreen> {
   final locationService = LocationService();
   final restaurantService = RestaurantService();
   int _routeRequestId = 0;
+  StreamSubscription<LatLng>? _locationSubscription;
+  bool _hasCenteredOnUser = false;
 
   LatLng? userLocation;
   List<Restaurant> nearbyRestaurants = [];
@@ -38,9 +39,6 @@ class _MapScreenState extends State<MapScreen> {
 
   // Variables para navegación y simulación de GPS
   bool isNavigating = false;
-  double navigationProgress = 0.0;
-  LatLng? simulatedUserLocation;
-  Timer? navigationTimer;
   RouteInfo? currentRouteInfo;
 
   @override
@@ -52,7 +50,23 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeApp() async {
     try {
       await restaurantService.initialize();
-      await _updateLocation();
+      final initialLocation = await locationService.getCurrentLocation();
+
+      if (!mounted) return;
+
+      final effectiveLocation =
+          initialLocation ?? locationService.getLastKnownLocation();
+
+      setState(() {
+        userLocation = effectiveLocation;
+        nearbyRestaurants = restaurantService.getNearbyRestaurants(
+          effectiveLocation,
+        );
+        markers = _buildMarkers();
+        isLoading = false;
+      });
+
+      _startLocationTracking();
     } catch (e, stackTrace) {
       debugPrint('Error al inicializar mapa: $e');
       debugPrintStack(stackTrace: stackTrace);
@@ -64,34 +78,57 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _updateLocation() async {
-    final location = await locationService.getCurrentLocation();
+  void _startLocationTracking() {
+    _locationSubscription?.cancel();
+    _locationSubscription = locationService.getLocationStream().listen(
+      (nextLocation) {
+        _handleLocationUpdate(nextLocation);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Error al escuchar ubicación: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      },
+    );
+  }
+
+  Future<void> _handleLocationUpdate(LatLng nextLocation) async {
+    final previousLocation = userLocation;
+    final movedEnoughToRefreshRoute =
+        previousLocation == null ||
+        RouteService.calculateDistance(previousLocation, nextLocation) >= 0.02;
+
     if (!mounted) return;
 
-    final effectiveLocation = location ?? defaultLocation;
-
-    // Obtener restaurantes cercanos
-    final nearby = restaurantService.getNearbyRestaurants(effectiveLocation);
-
-    // Si no hay cercanos, traer todos
-    final restaurantsToLoad = nearby.isNotEmpty
-        ? nearby
-        : restaurantService.getAllRestaurants();
-
     setState(() {
-      userLocation = effectiveLocation;
-      nearbyRestaurants = restaurantsToLoad;
+      userLocation = nextLocation;
+      nearbyRestaurants = restaurantService.getNearbyRestaurants(nextLocation);
       markers = _buildMarkers();
       isLoading = false;
     });
 
-    if (mapController != null) {
-      mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: effectiveLocation, zoom: 14),
-        ),
-      );
+    _centerMapOnUser(nextLocation, force: !_hasCenteredOnUser || isNavigating);
+
+    if (selectedRestaurant != null &&
+        (routePoints.isEmpty || movedEnoughToRefreshRoute || isNavigating)) {
+      await _updateRouteTo(selectedRestaurant!, startLocation: nextLocation);
     }
+  }
+
+  Future<void> _updateLocation() async {
+    setState(() => isLoading = true);
+
+    final nextLocation = await locationService.getCurrentLocation();
+    final effectiveLocation =
+        nextLocation ?? locationService.getLastKnownLocation();
+    await _handleLocationUpdate(effectiveLocation);
+  }
+
+  List<Restaurant> _restaurantsForDisplay() {
+    final currentLocation =
+        userLocation ?? locationService.getLastKnownLocation();
+    return nearbyRestaurants.isEmpty
+        ? restaurantService.getNearbyRestaurants(currentLocation)
+        : nearbyRestaurants;
   }
 
   Set<Marker> _buildMarkers() {
@@ -100,32 +137,26 @@ class _MapScreenState extends State<MapScreen> {
       return {};
     }
 
-    final currentLocation = simulatedUserLocation ?? baseUserLocation;
     final newMarkers = <Marker>{};
 
     newMarkers.add(
       Marker(
         markerId: const MarkerId('user_location'),
-        position: currentLocation,
+        position: baseUserLocation,
         infoWindow: InfoWindow(
-          title: isNavigating ? 'Navegando...' : 'Tu ubicación',
+          title: isNavigating ? 'Tu ubicación en tiempo real' : 'Tu ubicación',
         ),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       ),
     );
 
-    final restaurantsToMark = nearbyRestaurants.isEmpty
-        ? restaurantService.getAllRestaurants()
-        : nearbyRestaurants;
+    final restaurantsToMark = _restaurantsForDisplay();
 
     for (var restaurant in restaurantsToMark) {
       newMarkers.add(
         Marker(
           markerId: MarkerId(restaurant.id),
           position: restaurant.location,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueOrange,
-          ),
           infoWindow: InfoWindow(
             title: restaurant.name,
             snippet: restaurant.type,
@@ -147,12 +178,16 @@ class _MapScreenState extends State<MapScreen> {
     await _updateRouteTo(restaurant);
   }
 
-  Future<void> _updateRouteTo(Restaurant restaurant) async {
-    if (userLocation == null) return;
+  Future<void> _updateRouteTo(
+    Restaurant restaurant, {
+    LatLng? startLocation,
+  }) async {
+    final origin = startLocation ?? userLocation;
+    if (origin == null) return;
 
     final requestId = ++_routeRequestId;
     final routePath = await RouteService.fetchRoute(
-      userLocation!,
+      origin,
       restaurant.location,
     );
 
@@ -185,41 +220,15 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       isNavigating = true;
-      navigationProgress = 0.0;
-      simulatedUserLocation = userLocation;
       markers = _buildMarkers();
     });
 
-    // Simular actualización de GPS cada 500ms
-    navigationTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      final nextProgress = navigationProgress + 0.01;
-
-      if (nextProgress >= 1.0) {
-        _stopNavigation();
-        return;
-      }
-
-      final nextLocation = RouteService.interpolateAlongRoute(
-        routePoints.isNotEmpty
-            ? routePoints
-            : [userLocation!, selectedRestaurant!.location],
-        nextProgress,
-      );
-
-      setState(() {
-        navigationProgress = nextProgress;
-        simulatedUserLocation = nextLocation;
-        markers = _buildMarkers();
-      });
-    });
+    _updateRouteTo(selectedRestaurant!);
   }
 
   void _stopNavigation() {
-    navigationTimer?.cancel();
     setState(() {
       isNavigating = false;
-      navigationProgress = 0.0;
-      simulatedUserLocation = null;
       markers = _buildMarkers();
     });
   }
@@ -267,12 +276,23 @@ class _MapScreenState extends State<MapScreen> {
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
     if (userLocation != null) {
-      mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: userLocation!, zoom: 14),
-        ),
-      );
+      _centerMapOnUser(userLocation!, force: true);
     }
+  }
+
+  void _centerMapOnUser(LatLng target, {bool force = false}) {
+    if (mapController == null) {
+      return;
+    }
+
+    if (_hasCenteredOnUser && !force) {
+      return;
+    }
+
+    mapController!.animateCamera(
+      CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 14)),
+    );
+    _hasCenteredOnUser = true;
   }
 
   @override
@@ -316,9 +336,7 @@ class _MapScreenState extends State<MapScreen> {
 
                 return showList
                     ? RestaurantListWidget(
-                        restaurants: nearbyRestaurants.isEmpty
-                            ? restaurantService.getAllRestaurants()
-                            : nearbyRestaurants,
+                        restaurants: _restaurantsForDisplay(),
                         onRefresh: _updateLocation,
                         onTap: _navigateToDetails,
                       )
@@ -340,10 +358,9 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildMapContent() {
     if (kIsWeb) {
-      final currentLocation = userLocation ?? defaultLocation;
-      final restaurantsToShow = nearbyRestaurants.isEmpty
-          ? restaurantService.getNearbyRestaurants(currentLocation)
-          : nearbyRestaurants;
+      final currentLocation =
+          userLocation ?? locationService.getLastKnownLocation();
+      final restaurantsToShow = _restaurantsForDisplay();
 
       return ClipRRect(
         borderRadius: BorderRadius.circular(0),
@@ -422,7 +439,7 @@ class _MapScreenState extends State<MapScreen> {
     return GoogleMap(
       onMapCreated: _onMapCreated,
       initialCameraPosition: CameraPosition(
-        target: userLocation ?? defaultLocation,
+        target: userLocation ?? locationService.getLastKnownLocation(),
         zoom: 14,
       ),
       markers: markers,
@@ -434,17 +451,65 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildSidePanel() {
-    final restaurantsToShow = nearbyRestaurants.isEmpty
-        ? restaurantService.getAllRestaurants()
-        : nearbyRestaurants;
+    final restaurantsToShow = _restaurantsForDisplay();
+    final sidePanelItems = <Widget>[
+      if (selectedRestaurant != null && userLocation != null)
+        _buildSelectedRestaurantPanel(),
+      if (selectedRestaurant != null && userLocation != null)
+        const SizedBox(height: 12),
+      if (selectedRestaurant == null)
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Selecciona un local para ver a cuánto estás y cómo llegar en tiempo real.',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+          ),
+        ),
+      if (selectedRestaurant == null) const SizedBox(height: 12),
+      Text(
+        'Locales disponibles (${restaurantsToShow.length})',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 12),
+    ];
 
-    return SafeArea(
-      child: Container(
+    if (restaurantsToShow.isEmpty) {
+      sidePanelItems.add(
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'No hay restaurantes disponibles.',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ),
+        ),
+      );
+    } else {
+      for (final restaurant in restaurantsToShow) {
+        final distance = userLocation != null
+            ? restaurant.getDistanceInKm(userLocation!)
+            : 0.0;
+        sidePanelItems.add(_buildSidePanelRestaurantCard(restaurant, distance));
+        sidePanelItems.add(const SizedBox(height: 12));
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
         color: Colors.grey[100],
+        border: Border(left: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -454,185 +519,17 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    nearbyRestaurants.isEmpty
-                        ? 'No hay restaurantes dentro del radio. Mostrando restaurantes ordenados por distancia.'
-                        : 'Toca una tarjeta para ver detalles y trazar la ruta.',
+                    'Toca una tarjeta para ver el local, a cuánto estás y cómo llegar.',
                     style: TextStyle(color: Colors.grey[700]),
                   ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
-            if (selectedRestaurant != null && userLocation != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          selectedRestaurant!.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          selectedRestaurant!.address,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(height: 12),
-                        // Información de la ruta
-                        if (currentRouteInfo != null)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on,
-                                          color: Colors.orange,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          currentRouteInfo!.distanceText,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.schedule,
-                                          color: Colors.orange,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          currentRouteInfo!.durationText,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                if (isNavigating)
-                                  Column(
-                                    children: [
-                                      const SizedBox(height: 12),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: navigationProgress,
-                                          minHeight: 6,
-                                          backgroundColor: Colors.grey[300],
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.orange[700]!,
-                                              ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Progreso: ${(navigationProgress * 100).toStringAsFixed(0)}%',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.orange,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _toggleNavigation,
-                                icon: Icon(
-                                  isNavigating
-                                      ? Icons.stop_circle
-                                      : Icons.navigation,
-                                ),
-                                label: Text(
-                                  isNavigating
-                                      ? 'Detener navegación'
-                                      : 'Cómo llegar',
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isNavigating
-                                      ? Colors.red
-                                      : Colors.orange,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                setState(() {
-                                  _clearRoute();
-                                });
-                              },
-                              color: Colors.grey[700],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: restaurantsToShow.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No hay restaurantes disponibles.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: restaurantsToShow.length,
-                        itemBuilder: (context, index) {
-                          final restaurant = restaurantsToShow[index];
-                          final distance = userLocation != null
-                              ? restaurant.getDistanceInKm(userLocation!)
-                              : 0.0;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildRestaurantCard(restaurant, distance),
-                          );
-                        },
-                      ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                children: sidePanelItems,
               ),
             ),
           ],
@@ -641,10 +538,261 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildSelectedRestaurantPanel() {
+    final restaurant = selectedRestaurant!;
+    final currentLocation = userLocation!;
+    final liveDistanceKm = restaurant.getDistanceInKm(currentLocation);
+    final liveDistanceText = '${liveDistanceKm.toStringAsFixed(1)} km';
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              restaurant.name,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(restaurant.address, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.storefront,
+                        color: Colors.orange,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Local seleccionado · ${restaurant.type}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricChip(
+                          icon: Icons.location_on,
+                          label: 'Distancia',
+                          value: liveDistanceText,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricChip(
+                          icon: Icons.schedule,
+                          label: 'Tiempo',
+                          value:
+                              currentRouteInfo?.durationText ?? 'Calculando...',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isNavigating
+                        ? 'La ruta se actualiza con tu ubicación en tiempo real.'
+                        : 'Pulsa "Cómo llegar" para seguir la ruta desde tu ubicación actual.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _toggleNavigation,
+                    icon: Icon(
+                      isNavigating ? Icons.stop_circle : Icons.navigation,
+                    ),
+                    label: Text(
+                      isNavigating ? 'Detener navegación' : 'Cómo llegar',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isNavigating
+                          ? Colors.red
+                          : Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _clearRoute,
+                  color: Colors.grey[700],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricChip({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.orange, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidePanelRestaurantCard(Restaurant restaurant, double distance) {
+    final isSelected = selectedRestaurantId == restaurant.id;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: isSelected ? 2 : 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? Colors.orange : Colors.grey[300]!,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _selectRestaurant(restaurant),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      restaurant.imageUrl,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 72,
+                          height: 72,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.restaurant),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          restaurant.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          restaurant.type,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          restaurant.address,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${distance.toStringAsFixed(1)} km',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.star, size: 16, color: Colors.amber),
+                  const SizedBox(width: 4),
+                  Text('${restaurant.rating}'),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => _selectRestaurant(restaurant),
+                    icon: const Icon(Icons.navigation, size: 16),
+                    label: const Text('Cómo llegar'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomPanel() {
-    final restaurantsToShow = nearbyRestaurants.isEmpty
-        ? restaurantService.getAllRestaurants()
-        : nearbyRestaurants;
+    final restaurantsToShow = _restaurantsForDisplay();
 
     return Container(
       decoration: BoxDecoration(
@@ -720,7 +868,7 @@ class _MapScreenState extends State<MapScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        currentRouteInfo!.distanceText,
+                                        '${selectedRestaurant!.getDistanceInKm(userLocation!).toStringAsFixed(1)} km',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -746,30 +894,15 @@ class _MapScreenState extends State<MapScreen> {
                                 ],
                               ),
                               if (isNavigating)
-                                Column(
-                                  children: [
-                                    const SizedBox(height: 12),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: LinearProgressIndicator(
-                                        value: navigationProgress,
-                                        minHeight: 6,
-                                        backgroundColor: Colors.grey[300],
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.orange[700]!,
-                                            ),
-                                      ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    'Tu ubicación y la ruta se actualizan en tiempo real.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Progreso: ${(navigationProgress * 100).toStringAsFixed(0)}%',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                             ],
                           ),
@@ -948,7 +1081,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
-    navigationTimer?.cancel();
+    _locationSubscription?.cancel();
     mapController?.dispose();
     super.dispose();
   }

@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart'
     if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as latlng;
+import 'package:url_launcher/url_launcher.dart';
 import 'restaurant_model.dart';
 import 'location_service.dart';
 
@@ -77,10 +78,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   Future<void> _startRouteSimulation() async {
     if (isSimulating) return;
 
-    if (mapController == null) {
-      return;
-    }
-
     _prepareRoute();
 
     if (routePoints.isEmpty) {
@@ -93,9 +90,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
     for (final point in routePoints) {
       if (!mounted) return;
-      await mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(CameraPosition(target: point, zoom: 15)),
-      );
+      if (mapController != null) {
+        await mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: point, zoom: 15),
+          ),
+        );
+      }
       if (!mounted) return;
       setState(() {
         simulationLocation = point;
@@ -107,6 +108,28 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     setState(() {
       isSimulating = false;
     });
+  }
+
+  Future<void> _callRestaurant() async {
+    final sanitizedNumber = widget.restaurant.phoneNumber.replaceAll(
+      RegExp(r'[^0-9+]'),
+      '',
+    );
+    final phoneUri = Uri(scheme: 'tel', path: sanitizedNumber);
+
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'No se pudo abrir el teléfono para ${widget.restaurant.phoneNumber}',
+        ),
+      ),
+    );
   }
 
   @override
@@ -129,8 +152,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           return SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: isWide
-                  ? Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isWide)
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
@@ -140,27 +166,25 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                               _buildHeader(distance),
                               const SizedBox(height: 24),
                               _buildInfoCards(distance),
-                              const SizedBox(height: 24),
-                              _buildActionButtons(),
                             ],
                           ),
                         ),
                         const SizedBox(width: 24),
-                        Expanded(child: _buildMapCard(currentLocation, isWide)),
+                        Expanded(child: _buildMapCard(currentLocation, true)),
                       ],
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(distance),
-                        const SizedBox(height: 24),
-                        _buildInfoCards(distance),
-                        const SizedBox(height: 24),
-                        _buildMapCard(currentLocation, isWide),
-                        const SizedBox(height: 24),
-                        _buildActionButtons(),
-                      ],
-                    ),
+                  else ...[
+                    _buildHeader(distance),
+                    const SizedBox(height: 24),
+                    _buildInfoCards(distance),
+                    const SizedBox(height: 24),
+                    _buildMapCard(currentLocation, false),
+                  ],
+                  const SizedBox(height: 24),
+                  _buildActionButtons(),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           );
         },
@@ -366,9 +390,12 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
-        Expanded(
+        SizedBox(
+          width: 260,
           child: ElevatedButton.icon(
             onPressed: _startRouteSimulation,
             icon: const Icon(Icons.directions_walk),
@@ -379,10 +406,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        SizedBox(
+          width: 220,
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: _callRestaurant,
             icon: const Icon(Icons.phone),
             label: const Text('Llamar'),
             style: ElevatedButton.styleFrom(

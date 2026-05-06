@@ -14,19 +14,19 @@ class _HomeScreenState extends State<HomeScreen> {
       icon: Icons.location_on,
       title: 'Búsqueda por ubicación',
       subtitle: 'Encuentra restaurantes cercanos a ti',
-      routeName: '/map',
+      routeName: '/location-search',
     ),
     _FeatureItem(
       icon: Icons.star,
       title: 'Calificaciones',
       subtitle: 'Consulta las opiniones de otros usuarios',
-      routeName: '/profile',
+      routeName: '/ratings',
     ),
     _FeatureItem(
       icon: Icons.delivery_dining,
       title: 'Entrega rápida',
       subtitle: 'Recibe tu pedido en minutos',
-      routeName: '/orders',
+      routeName: '/fast-delivery',
     ),
     _FeatureItem(
       icon: Icons.map,

@@ -1,10 +1,15 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart'
     if (dart.library.html) 'package:foodfinder/google_maps_flutter_stub.dart';
+import 'dart:async';
 import 'app_constants.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
+  static const LocationSettings _locationSettings = LocationSettings(
+    accuracy: LocationAccuracy.best,
+    distanceFilter: 10,
+  );
 
   factory LocationService() {
     return _instance;
@@ -13,10 +18,10 @@ class LocationService {
   LocationService._internal();
 
   LatLng? _currentLocation;
-  final bool _isListening = false;
+  Stream<LatLng>? _locationStream;
 
   LatLng? get currentLocation => _currentLocation;
-  bool get isListening => _isListening;
+  bool get isListening => _locationStream != null;
 
   /// Verifica y solicita permisos de ubicación
   Future<bool> checkAndRequestPermissions() async {
@@ -50,6 +55,7 @@ class LocationService {
       }
 
       final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 5),
       );
 
@@ -64,6 +70,33 @@ class LocationService {
   /// Actualiza manualmente la ubicación
   Future<void> updateLocation() async {
     await getCurrentLocation();
+  }
+
+  Stream<LatLng> getLocationStream() {
+    final existingStream = _locationStream;
+    if (existingStream != null) {
+      return existingStream;
+    }
+
+    final stream = Stream.fromFuture(checkAndRequestPermissions()).asyncExpand((
+      hasPermission,
+    ) {
+      if (!hasPermission) {
+        _currentLocation = defaultLocation;
+        return Stream<LatLng>.value(defaultLocation);
+      }
+
+      return Geolocator.getPositionStream(
+        locationSettings: _locationSettings,
+      ).map((position) {
+        final nextLocation = LatLng(position.latitude, position.longitude);
+        _currentLocation = nextLocation;
+        return nextLocation;
+      });
+    }).asBroadcastStream();
+
+    _locationStream = stream;
+    return stream;
   }
 
   /// Comprueba si el servicio de ubicación está habilitado

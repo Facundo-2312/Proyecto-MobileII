@@ -4,10 +4,9 @@ import 'products_screen.dart';
 import 'orders_screen.dart';
 import 'profile_screen.dart';
 import 'map_screen.dart';
-import 'restaurant_details_screen.dart';
-import 'restaurant_model.dart';
 import 'database_service.dart';
 import 'users_management_screen.dart';
+import 'feature_screens.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -40,17 +39,18 @@ class FoodFinderApp extends StatelessWidget {
       ),
       home: const FoodFinderHome(),
       routes: {
-        '/details': (context) {
-          final restaurant =
-              ModalRoute.of(context)!.settings.arguments as Restaurant;
-          return RestaurantDetailsScreen(restaurant: restaurant);
-        },
         '/products': (context) => const ProductsScreen(),
         '/orders': (context) => const OrdersScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/map': (context) => const MapScreen(),
+        '/location-search': (context) => const LocationSearchScreen(),
+        '/ratings': (context) => const RatingsScreen(),
+        '/fast-delivery': (context) => const FastDeliveryScreen(),
         '/users': (context) => const UsersManagementScreen(),
       },
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => MissingRestaurantScreen(routeName: settings.name),
+      ),
     );
   }
 }
@@ -99,6 +99,66 @@ class _FoodFinderHomeState extends State<FoodFinderHome> {
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
+      ),
+    );
+  }
+}
+
+class MissingRestaurantScreen extends StatelessWidget {
+  final String? routeName;
+
+  const MissingRestaurantScreen({super.key, this.routeName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Detalle no disponible'),
+        backgroundColor: Colors.orange,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 56,
+                color: Colors.orange.shade700,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No se pudo cargar este restaurante.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                routeName == '/details'
+                    ? 'La ruta de detalle ya no se abre directamente en web. Vuelve al inicio y abre el restaurante nuevamente desde la lista.'
+                    : 'La ruta solicitada no está disponible. Vuelve al inicio y navega nuevamente desde la aplicación.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const FoodFinderHome(),
+                    ),
+                    (route) => false,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Volver al inicio'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
