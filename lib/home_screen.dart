@@ -71,6 +71,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Colors.orange,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Ver wearable',
+            onPressed: () => Navigator.pushNamed(context, '/wearable'),
+            icon: const Icon(Icons.watch),
+          ),
+        ],
       ),
       body: Scrollbar(
         controller: _scrollController,

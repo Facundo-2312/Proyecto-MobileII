@@ -7,6 +7,7 @@ import 'map_screen.dart';
 import 'database_service.dart';
 import 'users_management_screen.dart';
 import 'feature_screens.dart';
+import 'view/wearable/wearable_view.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -43,6 +44,7 @@ class FoodFinderApp extends StatelessWidget {
         '/orders': (context) => const OrdersScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/map': (context) => const MapScreen(),
+        '/wearable': (context) => const WearableView(),
         '/location-search': (context) => const LocationSearchScreen(),
         '/ratings': (context) => const RatingsScreen(),
         '/fast-delivery': (context) => const FastDeliveryScreen(),
