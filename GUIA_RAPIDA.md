@@ -16,13 +16,12 @@ flutter pub get
 
 #### Android:
 ```
-Abre: android/app/build.gradle.kts
+Abre: android/gradle.properties
 
-Busca esta línea:
-manifestPlaceholders["com.google.android.geo.API_KEY"] = "AIzaSyDemoKeyChangeThis123456789"
+Agrega o ajusta esta línea:
+MAPS_API_KEY=TU_CLAVE_AQUI
 
-Reemplaza con tu API key:
-manifestPlaceholders["com.google.android.geo.API_KEY"] = "TU_CLAVE_AQUI"
+También puedes usar variable de entorno MAPS_API_KEY.
 ```
 
 #### iOS:
@@ -139,10 +138,11 @@ const List<Map<String, dynamic>> mockRestaurants = [
 
 ## 📱 Plataformas Soportadas
 
+- ✅ **Web**: Flutter Web
 - ✅ **Android**: Versión 5.0+ (API 21+)
 - ✅ **iOS**: Versión 11.0+
-- ⚠️ **Web**: No configurado
-- ⚠️ **Desktop**: No configurado
+- ✅ **Smartwatch (Demo UI)**: Simulación dentro de la app
+- ⚠️ **Wear OS / watchOS nativo**: No implementado
 
 ## 🔑 API Keys
 

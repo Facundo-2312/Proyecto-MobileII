@@ -1,20 +1,160 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:foodfinder/database_service.dart';
 import 'package:foodfinder/main.dart';
+import 'package:foodfinder/orders_screen.dart';
+import 'package:foodfinder/register_user_screen.dart';
 
 void main() {
   testWidgets('FoodFinder app loads successfully', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const FoodFinderApp());
 
-    // Verify that the app loads without crashing.
     expect(find.byType(FoodFinderApp), findsOneWidget);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+  });
+
+  testWidgets('Bottom navigation changes selected tab', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const FoodFinderApp());
+
+    BottomNavigationBar navBar() => tester.widget<BottomNavigationBar>(
+      find.byType(BottomNavigationBar),
+    );
+
+    expect(navBar().currentIndex, 0);
+
+    await tester.tap(find.byIcon(Icons.restaurant_menu));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(navBar().currentIndex, 1);
+
+    await tester.tap(find.byIcon(Icons.person));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(navBar().currentIndex, 4);
+  });
+
+  testWidgets('Missing screen shows wearable-specific fallback copy', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: MissingRestaurantScreen(routeName: '/wearable')),
+    );
+
+    expect(find.text('Detalle no disponible'), findsOneWidget);
+    expect(
+      find.textContaining('simulación de interfaz dentro de la app principal'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Register user screen creates a new account', (
+    WidgetTester tester,
+  ) async {
+    final db = DatabaseService();
+    final email = 'nuevo_${DateTime.now().millisecondsSinceEpoch}@mail.com';
+
+    await tester.pumpWidget(
+      const MaterialApp(home: RegisterUserScreen()),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre completo'),
+      'Usuario Test',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      email,
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Teléfono'),
+      '099000111',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Contraseña'),
+      '1234',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Confirmar contraseña'),
+      '1234',
+    );
+
+    await tester.tap(find.text('Crear cuenta'));
+    await tester.pumpAndSettle();
+
+    final createdUser = await db.getUserByEmail(email);
+    expect(createdUser, isNotNull);
+    expect(createdUser?['name'], 'Usuario Test');
+  });
+
+  testWidgets('Deleting an order asks for confirmation and removes it', (
+    WidgetTester tester,
+  ) async {
+    final db = DatabaseService();
+    final userId = await db.getOrCreateSessionUserId();
+    final orderId = await db.createOrderSimple(
+      userId,
+      '1',
+      'Pizzeria Morosoli',
+      700,
+      'Pendiente',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: OrdersScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Eliminar').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirmar eliminación'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Eliminar'));
+    await tester.pumpAndSettle();
+
+    final remainingOrders = await db.getUserOrders(userId);
+    final exists = remainingOrders.any((order) => order['id'] == orderId);
+    expect(exists, isFalse);
+  });
+
+  testWidgets('Edit order allows saving comments', (WidgetTester tester) async {
+    final db = DatabaseService();
+    final userId = await db.getOrCreateSessionUserId();
+    final orderId = await db.createOrderSimple(
+      userId,
+      '1',
+      'Pizzeria Morosoli',
+      800,
+      'Pendiente',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: OrdersScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar / comentarios').first);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'Sin cebolla, por favor',
+    );
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    final updatedOrders = await db.getUserOrders(userId);
+    final updatedOrder = updatedOrders.firstWhere((order) => order['id'] == orderId);
+    expect(updatedOrder['notes'], 'Sin cebolla, por favor');
   });
 }

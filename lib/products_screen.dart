@@ -14,11 +14,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
   String? _selectedRestaurant;
   List<Map<String, dynamic>> _menuItems = [];
   final Map<String, int> _cart = {};
+  String? _activeUserId;
 
   @override
   void initState() {
     super.initState();
-    _loadRestaurants();
+    _initializeSession();
+  }
+
+  Future<void> _initializeSession() async {
+    final userId = await _db.getOrCreateSessionUserId();
+    if (!mounted) return;
+    setState(() {
+      _activeUserId = userId;
+    });
+    await _loadRestaurants();
   }
 
   Future<void> _loadRestaurants() async {
@@ -41,6 +51,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _makeOrder() async {
+    if (_activeUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para crear pedidos')),
+      );
+      return;
+    }
+
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Carrito vacío')),
@@ -63,7 +80,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _db.createOrder('user_1', _selectedRestaurant!, restaurantName, items);
+      await _db.createOrder(
+        _activeUserId!,
+        _selectedRestaurant!,
+        restaurantName,
+        items,
+      );
       if (!mounted) return;
       setState(() => _cart.clear());
       messenger.showSnackBar(

@@ -11,6 +11,7 @@ Una aplicación Flutter para descubrir restaurantes en Uruguay usando tu ubicaci
 - **Detalles del Restaurante**: Información completa con mapa integrado, teléfono y dirección
 - **Distancia Calculada**: Calcula automáticamente la distancia de cada restaurante
 - **Búsqueda Eficiente**: Radio de búsqueda de 50 km y fallback a restaurantes reales ordenados por distancia
+- **Vista Smartwatch (Demo)**: Interfaz tipo reloj integrada en la app principal
 
 ## Requisitos Técnicos
 
@@ -46,9 +47,10 @@ En Android e iOS la app usa Google Maps. En web usa OpenStreetMap, por lo que no
 
 #### Android:
 1. Abre `android/app/build.gradle.kts`
-2. Reemplaza `AIzaSyDemoKeyChangeThis123456789` con tu API key de Google Maps:
-```gradle
-manifestPlaceholders["com.google.android.geo.API_KEY"] = "TU_API_KEY_AQUI"
+2. Define `MAPS_API_KEY` en `android/gradle.properties` o como variable de entorno.
+
+```properties
+MAPS_API_KEY=TU_API_KEY_AQUI
 ```
 
 #### iOS:

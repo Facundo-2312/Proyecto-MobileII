@@ -2,7 +2,7 @@
 
 **Fecha**: 9 de Abril de 2026  
 **Estado**: ✅ **COMPLETADO**  
-**Plataforma**: Flutter (Android + iOS)
+**Plataforma**: Flutter (Web + Android + iOS + vista smartwatch demo)
 
 ---
 
@@ -119,7 +119,7 @@ latlong2: ^0.9.0               - Tipos de coordenadas (no usado en final)
 | Widgets personalizados | 2 |
 | Servicios | 2 (Singleton) |
 | Permisos configurados | 3 |
-| Plataformas soportadas | 2 (Android + iOS) |
+| Plataformas soportadas | 3 + demo (Web + Android + iOS + smartwatch demo) |
 
 ---
 

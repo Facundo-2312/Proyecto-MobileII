@@ -6,6 +6,7 @@ import 'profile_screen.dart';
 import 'map_screen.dart';
 import 'database_service.dart';
 import 'users_management_screen.dart';
+import 'register_user_screen.dart';
 import 'feature_screens.dart';
 import 'view/wearable/wearable_view.dart';
 
@@ -49,6 +50,8 @@ class FoodFinderApp extends StatelessWidget {
         '/ratings': (context) => const RatingsScreen(),
         '/fast-delivery': (context) => const FastDeliveryScreen(),
         '/users': (context) => const UsersManagementScreen(),
+        '/register': (context) => const RegisterUserScreen(),
+        '/signup': (context) => const RegisterUserScreen(),
       },
       onUnknownRoute: (settings) => MaterialPageRoute(
         builder: (_) => MissingRestaurantScreen(routeName: settings.name),
@@ -67,12 +70,12 @@ class FoodFinderHome extends StatefulWidget {
 class _FoodFinderHomeState extends State<FoodFinderHome> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const ProductsScreen(),
-    const MapScreen(),
-    const OrdersScreen(),
-    const ProfileScreen(),
+  static const List<Widget> _screens = [
+    HomeScreen(),
+    ProductsScreen(),
+    MapScreen(),
+    OrdersScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -139,7 +142,9 @@ class MissingRestaurantScreen extends StatelessWidget {
               Text(
                 routeName == '/details'
                     ? 'La ruta de detalle ya no se abre directamente en web. Vuelve al inicio y abre el restaurante nuevamente desde la lista.'
-                    : 'La ruta solicitada no está disponible. Vuelve al inicio y navega nuevamente desde la aplicación.',
+                  : routeName == '/wearable'
+                  ? 'La vista smartwatch es una simulación de interfaz dentro de la app principal.'
+                  : 'La ruta solicitada no está disponible. Vuelve al inicio y navega nuevamente desde la aplicación.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),

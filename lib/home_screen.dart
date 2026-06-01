@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Ver wearable',
+            tooltip: 'Vista smartwatch (demo)',
             onPressed: () => Navigator.pushNamed(context, '/wearable'),
             icon: const Icon(Icons.watch),
           ),
@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.grey[600],
                               fontSize: isUltraNarrow ? 7 : (isVeryNarrow ? 9 : 12),
                             ),
-                            maxLines: isUltraNarrow ? 1 : (isVeryNarrow ? 2 : 3),
+                            maxLines: isUltraNarrow ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -292,21 +292,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Icon(icon, size: 32, color: Colors.orange[800]),
-                    const SizedBox(height: 12),
+                    Icon(icon, size: 28, color: Colors.orange[800]),
+                    const SizedBox(height: 8),
                     Text(
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 15,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

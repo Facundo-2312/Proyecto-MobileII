@@ -20,8 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.foodfinder"
+        applicationId = "com.foodfinder.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,8 +28,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
-        // Google Maps
-        manifestPlaceholders["com.google.android.geo.API_KEY"] = "AIzaSyDemoKeyChangeThis123456789"
+        val mapsApiKey =
+            providers.gradleProperty("MAPS_API_KEY").orNull
+                ?: System.getenv("MAPS_API_KEY")
+                ?: ""
+        manifestPlaceholders["com.google.android.geo.API_KEY"] = mapsApiKey
     }
 
     buildTypes {

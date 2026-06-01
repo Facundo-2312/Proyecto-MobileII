@@ -10,8 +10,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _db = DatabaseService();
-  final _emailController = TextEditingController(text: 'admin@foodfinder.com');
-  final _passwordController = TextEditingController(text: 'Admin1234');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   static const _defaultName = 'Administrador';
   static const _defaultEmail = 'admin@foodfinder.com';
@@ -41,9 +41,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa email y contraseña')),
+        const SnackBar(content: Text('Completa el email para iniciar sesión')),
       );
       return;
     }
@@ -81,6 +81,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _loginAsGuest() async {
+    setState(() {
+      _submitting = true;
+    });
+
+    try {
+      final user = await _db.signInAsGuest();
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresaste como invitado')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+    }
+  }
+
   Future<void> _logout() async {
     await _db.logout();
     if (!mounted) return;
@@ -98,7 +121,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const demoValues = {
       'usuario demo',
       'demo@foodfinder.com',
-      'user_1',
       '+598 9 1234 567',
       'calle principal 123, rivera',
     };
@@ -279,7 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Ingreso de administrador',
+                    'Iniciar sesión',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -288,7 +310,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Inicia sesión para ver y gestionar tu perfil',
+                    'Accede como admin o usuario registrado',
                     style: TextStyle(color: Colors.white70),
                     textAlign: TextAlign.center,
                   ),
@@ -297,12 +319,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Credenciales de prueba',
+              'Inicia sesión o crea una cuenta nueva',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            const Text('Email: admin@foodfinder.com'),
-            const Text('Contraseña: Admin1234'),
             const SizedBox(height: 20),
             TextField(
               controller: _emailController,
@@ -318,7 +337,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               controller: _passwordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: 'Contraseña',
+                labelText: 'Contraseña (opcional)',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.lock),
               ),
@@ -343,6 +362,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'Ingresar',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _submitting ? null : _loginAsGuest,
+                child: const Text('Continuar como invitado'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _submitting
+                    ? null
+                    : () async {
+                        final created = await Navigator.pushNamed(
+                          context,
+                          '/signup',
+                        );
+                        if (created == true) {
+                          await _loadSession();
+                        }
+                      },
+                icon: const Icon(Icons.person_add),
+                label: const Text('Registrar nuevo usuario'),
               ),
             ),
           ],

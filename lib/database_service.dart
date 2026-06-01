@@ -12,6 +12,10 @@ class DatabaseService {
   static final List<Map<String, dynamic>> _webRestaurants = List.unmodifiable(
     mockRestaurants,
   );
+  static const String _seedAdminPassword = String.fromEnvironment(
+    'FOODFINDER_ADMIN_PASSWORD',
+    defaultValue: '',
+  );
 
   static final List<Map<String, dynamic>> _webMenuItems = [
     {
@@ -135,7 +139,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createTables,
       onUpgrade: _upgradeDatabase,
     );
@@ -161,7 +165,7 @@ class DatabaseService {
       'email': 'admin@foodfinder.com',
       'phone': '+598 9 0000000',
       'created_at': DateTime.now().toIso8601String(),
-      'password': 'Admin1234',
+      'password': _seedAdminPassword,
       'role': 'admin',
     });
   }
@@ -231,6 +235,7 @@ class DatabaseService {
         restaurant_name TEXT,
         total_price REAL,
         status TEXT,
+        notes TEXT DEFAULT '',
         created_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
@@ -263,6 +268,10 @@ class DatabaseService {
         )
       ''');
       await _ensureAdminUser(db);
+    }
+
+    if (oldVersion < 3) {
+      await db.execute("ALTER TABLE orders ADD COLUMN notes TEXT DEFAULT ''");
     }
   }
 
@@ -391,7 +400,7 @@ class DatabaseService {
         'email': 'admin@foodfinder.com',
         'phone': '+598 9 0000000',
         'created_at': DateTime.now().toIso8601String(),
-        'password': 'Admin1234',
+        'password': _seedAdminPassword,
         'role': 'admin',
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
@@ -435,6 +444,7 @@ class DatabaseService {
         'restaurant_name': restaurantName,
         'total_price': totalPrice,
         'status': 'Pendiente',
+        'notes': '',
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -460,6 +470,7 @@ class DatabaseService {
       'restaurant_name': restaurantName,
       'total_price': totalPrice,
       'status': 'Pendiente',
+      'notes': '',
       'created_at': DateTime.now().toIso8601String(),
     });
 
@@ -483,6 +494,7 @@ class DatabaseService {
     String restaurantName,
     double totalPrice,
     String status,
+    {String notes = ''}
   ) async {
     final orderId = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -495,6 +507,7 @@ class DatabaseService {
         'restaurant_name': restaurantName,
         'total_price': totalPrice,
         'status': status,
+        'notes': notes,
         'created_at': DateTime.now().toIso8601String(),
       });
       return orderId;
@@ -508,6 +521,7 @@ class DatabaseService {
       'restaurant_name': restaurantName,
       'total_price': totalPrice,
       'status': status,
+      'notes': notes,
       'created_at': DateTime.now().toIso8601String(),
     });
     return orderId;
@@ -627,6 +641,30 @@ class DatabaseService {
     return getUser(userId);
   }
 
+  Future<String> getOrCreateSessionUserId() async {
+    final currentUserId = await getCurrentUserId();
+    if (currentUserId != null && currentUserId.isNotEmpty) {
+      return currentUserId;
+    }
+
+    final users = await getAllUsers();
+    if (users.isNotEmpty) {
+      final fallbackUserId = users.first['id'] as String;
+      await setCurrentUserId(fallbackUserId);
+      return fallbackUserId;
+    }
+
+    final createdUserId = await createUserWithCredentials(
+      'Usuario Demo',
+      'demo@foodfinder.com',
+      '+598 9 1234567',
+      password: '',
+      role: 'user',
+    );
+    await setCurrentUserId(createdUserId);
+    return createdUserId;
+  }
+
   Future<String?> getCurrentUserId() async {
     if (kIsWeb) {
       await _ensureWebDataInitialized();
@@ -675,6 +713,15 @@ class DatabaseService {
 
   Future<void> logout() async {
     await setCurrentUserId(null);
+  }
+
+  Future<Map<String, dynamic>> signInAsGuest() async {
+    final userId = await getOrCreateSessionUserId();
+    final user = await getUser(userId);
+    if (user == null) {
+      throw StateError('No se pudo crear sesión de invitado.');
+    }
+    return user;
   }
 
   // ===== PEDIDOS (por usuario) =====
@@ -737,6 +784,43 @@ class DatabaseService {
     await db.update(
       'orders',
       {'status': status},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<void> updateOrder(
+    String orderId, {
+    String? restaurantId,
+    String? restaurantName,
+    double? totalPrice,
+    String? status,
+    String? notes,
+  }) async {
+    final updateData = <String, dynamic>{};
+    if (restaurantId != null) updateData['restaurant_id'] = restaurantId;
+    if (restaurantName != null) updateData['restaurant_name'] = restaurantName;
+    if (totalPrice != null) updateData['total_price'] = totalPrice;
+    if (status != null) updateData['status'] = status;
+    if (notes != null) updateData['notes'] = notes;
+
+    if (updateData.isEmpty) {
+      return;
+    }
+
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      final index = _webOrders.indexWhere((order) => order['id'] == orderId);
+      if (index != -1) {
+        _webOrders[index].addAll(updateData);
+      }
+      return;
+    }
+
+    final db = await database;
+    await db.update(
+      'orders',
+      updateData,
       where: 'id = ?',
       whereArgs: [orderId],
     );

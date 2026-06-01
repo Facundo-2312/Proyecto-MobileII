@@ -13,6 +13,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   List<Map<String, dynamic>> _users = [];
   bool _loading = true;
 
@@ -40,15 +41,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _db.createUser(
+      await _db.createUserWithCredentials(
         _nameController.text,
         _emailController.text,
         _phoneController.text,
+        password: _passwordController.text,
       );
       if (!mounted) return;
       _nameController.clear();
       _emailController.clear();
       _phoneController.clear();
+      _passwordController.clear();
       await _loadUsers();
       messenger.showSnackBar(
         const SnackBar(content: Text('✅ Usuario creado y guardado en la base de datos')),
@@ -109,6 +112,16 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   labelText: 'Teléfono',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   prefixIcon: const Icon(Icons.phone),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.lock),
                 ),
               ),
               const SizedBox(height: 16),
@@ -184,6 +197,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 }
