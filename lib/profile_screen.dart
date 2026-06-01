@@ -152,6 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _defaultPhone,
     );
     final role = (_user?['role'] as String? ?? 'user').toLowerCase();
+    final canOpenUsersPanel = role == 'admin' || role == 'manager';
 
     return Scaffold(
       appBar: AppBar(
@@ -225,26 +226,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildSettingTile('Notificaciones', 'Recibe alertas de tus pedidos', Icons.notifications),
                   _buildSettingTile('Métodos de pago', 'Administra tus tarjetas', Icons.credit_card),
                   _buildSettingTile('Privacidad', 'Controla tu privacidad', Icons.lock),
-                  if (role == 'admin' || role == 'manager') ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pushNamed(context, '/users'),
-                        icon: const Icon(Icons.admin_panel_settings),
-                        label: Text(
-                          role == 'admin'
-                              ? 'Gestionar usuarios'
-                              : 'Ver panel de usuarios',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (canOpenUsersPanel) {
+                          Navigator.pushNamed(context, '/users');
+                          return;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Solo administradores o supervisores pueden abrir este panel.',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.admin_panel_settings),
+                      label: Text(
+                        canOpenUsersPanel
+                            ? (role == 'admin'
+                                  ? 'Gestionar usuarios'
+                                  : 'Ver panel de usuarios')
+                            : 'Panel de usuarios (sin permisos)',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: canOpenUsersPanel
+                            ? Colors.orange.shade700
+                            : Colors.grey,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    canOpenUsersPanel
+                        ? 'Tu rol puede acceder al panel de usuarios.'
+                        : 'Acceso restringido: solo administradores y supervisores.',
+                    style: TextStyle(
+                      color: canOpenUsersPanel ? Colors.green.shade700 : Colors.grey[700],
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   const Text(
                     'Ayuda',
