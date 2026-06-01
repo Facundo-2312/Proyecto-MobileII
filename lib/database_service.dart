@@ -8,6 +8,7 @@ import 'app_constants.dart';
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   static Database? _database;
+  static const List<String> availableRoles = ['admin', 'manager', 'user'];
 
   static final List<Map<String, dynamic>> _webRestaurants = List.unmodifiable(
     mockRestaurants,
@@ -639,6 +640,136 @@ class DatabaseService {
       return null;
     }
     return getUser(userId);
+  }
+
+  Future<int> countUsersByRole(String role) async {
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      return _webUsers.where((user) => user['role'] == role).length;
+    }
+
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS total FROM users WHERE role = ?',
+      [role],
+    );
+    return (result.first['total'] as int?) ?? 0;
+  }
+
+  Future<void> updateUser(
+    String userId, {
+    String? name,
+    String? email,
+    String? phone,
+    String? password,
+    String? role,
+  }) async {
+    final existingUser = await getUser(userId);
+    if (existingUser == null) {
+      throw StateError('Usuario no encontrado.');
+    }
+
+    final updateData = <String, dynamic>{};
+    if (name != null) {
+      final trimmed = name.trim();
+      if (trimmed.isNotEmpty) updateData['name'] = trimmed;
+    }
+    if (email != null) {
+      final trimmed = email.trim().toLowerCase();
+      if (trimmed.isNotEmpty) updateData['email'] = trimmed;
+    }
+    if (phone != null) updateData['phone'] = phone.trim();
+    if (password != null && password.isNotEmpty) updateData['password'] = password;
+
+    if (role != null) {
+      if (!availableRoles.contains(role)) {
+        throw ArgumentError('Rol no válido.');
+      }
+
+      final currentRole = (existingUser['role'] as String?) ?? 'user';
+      if (currentRole == 'admin' && role != 'admin') {
+        final adminCount = await countUsersByRole('admin');
+        if (adminCount <= 1) {
+          throw StateError('Debe existir al menos un administrador.');
+        }
+      }
+      updateData['role'] = role;
+    }
+
+    if (updateData.isEmpty) {
+      return;
+    }
+
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      final index = _webUsers.indexWhere((user) => user['id'] == userId);
+      if (index == -1) {
+        throw StateError('Usuario no encontrado.');
+      }
+      _webUsers[index].addAll(updateData);
+      return;
+    }
+
+    final db = await database;
+    await db.update('users', updateData, where: 'id = ?', whereArgs: [userId]);
+  }
+
+  Future<void> deleteUser(String userId) async {
+    final existingUser = await getUser(userId);
+    if (existingUser == null) {
+      throw StateError('Usuario no encontrado.');
+    }
+
+    final currentRole = (existingUser['role'] as String?) ?? 'user';
+    if (currentRole == 'admin') {
+      final adminCount = await countUsersByRole('admin');
+      if (adminCount <= 1) {
+        throw StateError('No se puede eliminar el único administrador.');
+      }
+    }
+
+    final currentUserId = await getCurrentUserId();
+
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      _webOrderItems.removeWhere((item) {
+        final orderId = item['order_id'] as String?;
+        if (orderId == null) return false;
+        final order = _webOrders.firstWhere(
+          (value) => value['id'] == orderId,
+          orElse: () => <String, dynamic>{},
+        );
+        return order['user_id'] == userId;
+      });
+      _webOrders.removeWhere((order) => order['user_id'] == userId);
+      _webUsers.removeWhere((user) => user['id'] == userId);
+      if (currentUserId == userId) {
+        await setCurrentUserId(null);
+      }
+      return;
+    }
+
+    final db = await database;
+    await db.transaction((txn) async {
+      final userOrders = await txn.query(
+        'orders',
+        columns: ['id'],
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
+
+      for (final order in userOrders) {
+        final orderId = order['id'] as String;
+        await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+      }
+
+      await txn.delete('orders', where: 'user_id = ?', whereArgs: [userId]);
+      await txn.delete('users', where: 'id = ?', whereArgs: [userId]);
+    });
+
+    if (currentUserId == userId) {
+      await setCurrentUserId(null);
+    }
   }
 
   Future<String> getOrCreateSessionUserId() async {

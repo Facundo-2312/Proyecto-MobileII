@@ -225,14 +225,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildSettingTile('Notificaciones', 'Recibe alertas de tus pedidos', Icons.notifications),
                   _buildSettingTile('Métodos de pago', 'Administra tus tarjetas', Icons.credit_card),
                   _buildSettingTile('Privacidad', 'Controla tu privacidad', Icons.lock),
-                  if (role == 'admin') ...[
+                  if (role == 'admin' || role == 'manager') ...[
                     const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.pushNamed(context, '/users'),
                         icon: const Icon(Icons.admin_panel_settings),
-                        label: const Text('Gestionar usuarios'),
+                        label: Text(
+                          role == 'admin'
+                              ? 'Gestionar usuarios'
+                              : 'Ver panel de usuarios',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange.shade700,
                           foregroundColor: Colors.white,
