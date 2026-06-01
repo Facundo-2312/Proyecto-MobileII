@@ -195,7 +195,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 8),
                   Chip(
                     label: Text(
-                      role == 'admin' ? 'Administrador' : 'Usuario',
+                      role == 'admin'
+                          ? 'Administrador'
+                          : role == 'manager'
+                              ? 'Supervisor'
+                              : 'Usuario',
                       style: const TextStyle(color: Colors.white),
                     ),
                     backgroundColor: Colors.white.withValues(alpha: 0.18),
@@ -402,6 +406,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.28)),
+              ),
+              child: Text(
+                'Tip: si no tienes cuenta, regístrate desde aquí y podrás iniciar sesión con tu nuevo email y contraseña.',
+                style: TextStyle(color: Colors.orange.shade900),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -417,7 +435,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
                       },
                 icon: const Icon(Icons.person_add),
-                label: const Text('Registrar nuevo usuario'),
+                label: const Text('Crear cuenta nueva'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.orange),
+                  foregroundColor: Colors.orange.shade800,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
             ),
           ],

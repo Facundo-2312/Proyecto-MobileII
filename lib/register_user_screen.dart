@@ -18,8 +18,13 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _submitting = false;
+  bool _submittedOnce = false;
 
   Future<void> _register() async {
+    setState(() {
+      _submittedOnce = true;
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -76,6 +81,9 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
+          autovalidateMode: _submittedOnce
+              ? AutovalidateMode.onUserInteraction
+              : AutovalidateMode.disabled,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -132,6 +140,7 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Contraseña',
+                  helperText: 'Mínimo 4 caracteres',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock),
                 ),

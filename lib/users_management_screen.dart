@@ -333,7 +333,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                         password: passwordController.text,
                         role: selectedRole,
                       );
-                      if (!mounted) return;
+                      if (!mounted || !dialogContext.mounted) return;
                       Navigator.of(dialogContext).pop();
                       await _loadInitialData();
                       _showInfo('Usuario actualizado.');

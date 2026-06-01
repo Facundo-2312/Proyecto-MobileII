@@ -13,11 +13,101 @@ class _OrdersScreenState extends State<OrdersScreen> {
   List<Map<String, dynamic>> _orders = [];
   List<Map<String, dynamic>> _restaurants = [];
   bool _loading = true;
+  bool _processingAction = false;
   String? _activeUserId;
   String? _selectedRestaurant;
   String _selectedStatus = 'Pendiente';
   final TextEditingController _totalPriceController = TextEditingController();
   final List<String> _statusOptions = ['Pendiente', 'Preparando', 'Entregado'];
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  double? _parsePrice(String rawValue) {
+    return double.tryParse(rawValue.trim().replaceAll(',', '.'));
+  }
+
+  String _formatOrderDate(dynamic createdAt) {
+    if (createdAt == null) return '-';
+    final parsed = DateTime.tryParse(createdAt.toString());
+    if (parsed == null) return createdAt.toString();
+
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    final year = parsed.year.toString();
+    final hour = parsed.hour.toString().padLeft(2, '0');
+    final minute = parsed.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
+  }
+
+  int get _pendingOrdersCount {
+    return _orders.where((order) {
+      final status = (order['status'] as String? ?? '').toLowerCase();
+      return status == 'pendiente' || status == 'preparando';
+    }).length;
+  }
+
+  int get _deliveredOrdersCount {
+    return _orders.where((order) {
+      final status = (order['status'] as String? ?? '').toLowerCase();
+      return status == 'entregado';
+    }).length;
+  }
+
+  double get _totalOrdersAmount {
+    return _orders.fold<double>(0, (acc, order) {
+      final total = (order['total_price'] as num?)?.toDouble() ?? 0;
+      return acc + total;
+    });
+  }
+
+  Widget _buildSummaryCard() {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Resumen de pedidos',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.shopping_bag, size: 18),
+                  label: Text('Total: ${_orders.length}'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.local_shipping, size: 18),
+                  label: Text('Activos: $_pendingOrdersCount'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.check_circle, size: 18),
+                  label: Text('Entregados: $_deliveredOrdersCount'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Monto acumulado: \$${_totalOrdersAmount.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: Colors.orange.shade800,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -68,8 +158,25 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _changeOrderStatus(String orderId, String status) async {
-    await _db.updateOrderStatus(orderId, status);
-    await _loadOrders();
+    if (_processingAction) return;
+
+    setState(() {
+      _processingAction = true;
+    });
+
+    try {
+      await _db.updateOrderStatus(orderId, status);
+      await _loadOrders();
+      _showInfo('Estado actualizado a "$status"');
+    } catch (e) {
+      _showInfo('No se pudo actualizar el estado: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingAction = false;
+        });
+      }
+    }
   }
 
   Future<void> _deleteOrder(String orderId) async {
@@ -78,6 +185,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _confirmDeleteOrder(Map<String, dynamic> order) async {
+    if (_processingAction) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -100,11 +209,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
 
     if (confirmed == true) {
-      await _deleteOrder(order['id'] as String);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pedido eliminado')),
-      );
+      setState(() {
+        _processingAction = true;
+      });
+      try {
+        await _deleteOrder(order['id'] as String);
+        _showInfo('Pedido eliminado');
+      } catch (e) {
+        _showInfo('No se pudo eliminar el pedido: $e');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _processingAction = false;
+          });
+        }
+      }
     }
   }
 
@@ -203,32 +322,49 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                   onPressed: () async {
+                    final parsedTotal = _parsePrice(totalController.text);
+                    if (selectedRestaurant.isEmpty) {
+                      _showInfo('Selecciona un restaurante.');
+                      return;
+                    }
+                    if (parsedTotal == null || parsedTotal <= 0) {
+                      _showInfo('Ingresa un total mayor a 0.');
+                      return;
+                    }
+
                     final restaurant = _restaurants.firstWhere(
                       (restaurant) => restaurant['id'] == selectedRestaurant,
                       orElse: () => order,
                     );
                     final restaurantName = restaurant['name'] as String? ??
                         (order['restaurant_name'] as String? ?? 'Restaurante');
-                    final totalPrice =
-                        double.tryParse(totalController.text.replaceAll(',', '.')) ??
-                            (order['total_price'] as num?)?.toDouble() ??
-                            0.0;
+                    final totalPrice = parsedTotal;
 
                     Navigator.of(dialogContext).pop();
-                    await _db.updateOrder(
-                      order['id'] as String,
-                      restaurantId: selectedRestaurant,
-                      restaurantName: restaurantName,
-                      totalPrice: totalPrice,
-                      status: selectedStatus,
-                      notes: notesController.text.trim(),
-                    );
-                    if (!mounted) return;
-                    await _loadOrders();
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      const SnackBar(content: Text('Pedido actualizado')),
-                    );
+                    setState(() {
+                      _processingAction = true;
+                    });
+                    try {
+                      await _db.updateOrder(
+                        order['id'] as String,
+                        restaurantId: selectedRestaurant,
+                        restaurantName: restaurantName,
+                        totalPrice: totalPrice,
+                        status: selectedStatus,
+                        notes: notesController.text.trim(),
+                      );
+                      if (!mounted) return;
+                      await _loadOrders();
+                      _showInfo('Pedido actualizado');
+                    } catch (e) {
+                      _showInfo('No se pudo actualizar: $e');
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _processingAction = false;
+                        });
+                      }
+                    }
                   },
                   child: const Text('Guardar'),
                 ),
@@ -321,24 +457,48 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
               onPressed: () async {
+                final selectedRestaurant = _selectedRestaurant;
+                final price = _parsePrice(_totalPriceController.text);
+                if (selectedRestaurant == null || selectedRestaurant.isEmpty) {
+                  _showInfo('Selecciona un restaurante para crear el pedido.');
+                  return;
+                }
+                if (price == null || price <= 0) {
+                  _showInfo('Ingresa un total mayor a 0.');
+                  return;
+                }
+
                 final restaurant = _restaurants.firstWhere(
-                  (restaurant) => restaurant['id'] == _selectedRestaurant,
+                  (restaurant) => restaurant['id'] == selectedRestaurant,
                   orElse: () => {},
                 );
                 final restaurantName = restaurant['name'] as String? ?? 'Restaurante';
-                final price = double.tryParse(_totalPriceController.text.replaceAll(',', '.')) ?? 0.0;
 
                 Navigator.of(context).pop();
-                await _db.createOrderSimple(
-                  _activeUserId ?? await _db.getOrCreateSessionUserId(),
-                  _selectedRestaurant ?? '1',
-                  restaurantName,
-                  price,
-                  _selectedStatus,
-                  notes: notesController.text.trim(),
-                );
-                if (!mounted) return;
-                await _loadOrders();
+                setState(() {
+                  _processingAction = true;
+                });
+                try {
+                  await _db.createOrderSimple(
+                    _activeUserId ?? await _db.getOrCreateSessionUserId(),
+                    selectedRestaurant,
+                    restaurantName,
+                    price,
+                    _selectedStatus,
+                    notes: notesController.text.trim(),
+                  );
+                  if (!mounted) return;
+                  await _loadOrders();
+                  _showInfo('Pedido creado correctamente');
+                } catch (e) {
+                  _showInfo('No se pudo crear el pedido: $e');
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      _processingAction = false;
+                    });
+                  }
+                }
               },
               child: const Text('Crear'),
             ),
@@ -365,7 +525,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.orange,
-        onPressed: _showCreateOrderDialog,
+        onPressed: _processingAction ? null : _showCreateOrderDialog,
         child: const Icon(Icons.add),
       ),
       body: _orders.isEmpty
@@ -395,80 +555,77 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _loadOrders,
-              child: ListView.builder(
-                itemCount: _orders.length,
-                itemBuilder: (context, index) {
-                  final order = _orders[index];
-                  final orderStatus = order['status'] as String? ?? 'Pendiente';
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: ListTile(
-                      title: Text(
-                        order['restaurant_name'] ?? 'Restaurante',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          Text('ID: ${order['id']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                          Text('Total: \$${order['total_price']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          if ((order['notes'] as String?)?.trim().isNotEmpty ?? false)
-                            Text(
-                              'Obs: ${order['notes']}',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+              onRefresh: _processingAction ? () async {} : _loadOrders,
+              child: ListView(
+                children: [
+                  _buildSummaryCard(),
+                  ..._orders.map((order) {
+                    final orderStatus = order['status'] as String? ?? 'Pendiente';
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: ListTile(
+                        title: Text(
+                          order['restaurant_name'] ?? 'Restaurante',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text('ID: ${order['id']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                            Text('Total: \$${order['total_price']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if ((order['notes'] as String?)?.trim().isNotEmpty ?? false)
+                              Text(
+                                'Obs: ${order['notes']}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            Text(_formatOrderDate(order['created_at'])),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Chip(
+                              label: Text(
+                                orderStatus,
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                              backgroundColor: _getStatusColor(orderStatus),
                             ),
-                          Text(DateTime.parse(order['created_at'] as String).toString().split('.')[0]),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Chip(
-                            label: Text(
-                              orderStatus,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            IconButton(
+                              tooltip: 'Editar pedido',
+                              onPressed: _processingAction ? null : () => _showEditOrderDialog(order),
+                              icon: const Icon(Icons.edit, color: Colors.orange),
                             ),
-                            backgroundColor: _getStatusColor(orderStatus),
-                          ),
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert),
-                            onSelected: (value) async {
-                              if (value == 'delete') {
-                                await _confirmDeleteOrder(order);
-                              } else if (value == 'edit') {
-                                await _showEditOrderDialog(order);
-                              } else {
+                            IconButton(
+                              tooltip: 'Eliminar pedido',
+                              onPressed: _processingAction ? null : () => _confirmDeleteOrder(order),
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert),
+                              enabled: !_processingAction,
+                              onSelected: (value) async {
                                 await _changeOrderStatus(order['id'] as String, value);
-                              }
-                            },
-                            itemBuilder: (context) {
-                              return [
-                                const PopupMenuItem<String>(
-                                  value: 'edit',
-                                  child: Text('Editar / comentarios'),
-                                ),
-                                ..._statusOptions.map((status) {
-                                  return PopupMenuItem<String>(
-                                    value: status,
-                                    child: Text(status),
-                                  );
-                                }),
-                                const PopupMenuDivider(),
-                                const PopupMenuItem<String>(
-                                  value: 'delete',
-                                  child: Text('Eliminar', style: TextStyle(color: Colors.red)),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                              },
+                              itemBuilder: (context) {
+                                return [
+                                  ..._statusOptions.map((status) {
+                                    return PopupMenuItem<String>(
+                                      value: status,
+                                      child: Text(status),
+                                    );
+                                  }),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  }),
+                ],
               ),
             ),
     );

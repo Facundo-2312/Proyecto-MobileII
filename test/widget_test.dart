@@ -82,11 +82,25 @@ void main() {
     );
 
     await tester.tap(find.text('Crear cuenta'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
 
     final createdUser = await db.getUserByEmail(email);
     expect(createdUser, isNotNull);
     expect(createdUser?['name'], 'Usuario Test');
+  });
+
+  testWidgets('Home screen has a signup shortcut card', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const FoodFinderApp());
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Crear cuenta'), findsOneWidget);
+
+    await tester.tap(find.text('Crear cuenta'));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(RegisterUserScreen), findsOneWidget);
   });
 
   testWidgets('Deleting an order asks for confirmation and removes it', (
@@ -105,18 +119,15 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: OrdersScreen()),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 900));
 
-    await tester.tap(find.byIcon(Icons.more_vert).first);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Eliminar').first);
-    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete).first);
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Confirmar eliminación'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Eliminar'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 900));
 
     final remainingOrders = await db.getUserOrders(userId);
     final exists = remainingOrders.any((order) => order['id'] == orderId);
@@ -137,21 +148,18 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: OrdersScreen()),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 900));
 
-    await tester.tap(find.byIcon(Icons.more_vert).first);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Editar / comentarios').first);
-    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit).first);
+    await tester.pump(const Duration(milliseconds: 400));
 
     await tester.enterText(
-      find.byType(TextFormField).last,
+      find.widgetWithText(TextFormField, 'Comentarios / observaciones'),
       'Sin cebolla, por favor',
     );
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 900));
 
     final updatedOrders = await db.getUserOrders(userId);
     final updatedOrder = updatedOrders.firstWhere((order) => order['id'] == orderId);

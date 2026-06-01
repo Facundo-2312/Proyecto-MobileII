@@ -46,6 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
       subtitle: 'Personaliza tu cuenta y preferencias',
       routeName: '/profile',
     ),
+    _FeatureItem(
+      icon: Icons.person_add_alt_1,
+      title: 'Crear cuenta',
+      subtitle: 'Registra un nuevo usuario en pocos pasos',
+      routeName: '/signup',
+    ),
   ];
 
   @override
