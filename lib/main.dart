@@ -8,6 +8,8 @@ import 'database_service.dart';
 import 'users_management_screen.dart';
 import 'register_user_screen.dart';
 import 'feature_screens.dart';
+import 'legal_screens.dart';
+import 'premium_upgrade_screen.dart';
 import 'view/wearable/wearable_view.dart';
 
 import 'package:flutter/foundation.dart';
@@ -52,6 +54,9 @@ class FoodFinderApp extends StatelessWidget {
         '/users': (context) => const UsersManagementScreen(),
         '/register': (context) => const RegisterUserScreen(),
         '/signup': (context) => const RegisterUserScreen(),
+        '/terms': (context) => const TermsOfUseScreen(),
+        '/privacy': (context) => const PrivacyPolicyScreen(),
+        '/premium': (context) => const PremiumUpgradeScreen(),
       },
       onUnknownRoute: (settings) => MaterialPageRoute(
         builder: (_) => MissingRestaurantScreen(routeName: settings.name),

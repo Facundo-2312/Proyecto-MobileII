@@ -846,6 +846,63 @@ class DatabaseService {
     await setCurrentUserId(null);
   }
 
+  Future<bool> hasPremiumAccess({String? userId}) async {
+    final user = userId == null ? await getCurrentUser() : await getUser(userId);
+    final role = (user?['role'] as String? ?? '').toLowerCase();
+    if (role == 'admin' || role == 'manager') {
+      return true;
+    }
+
+    final premiumStateKey = await _resolvePremiumStateKey(userId);
+
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      return _webAppState[premiumStateKey] == 'true';
+    }
+
+    final db = await database;
+    final result = await db.query(
+      'app_state',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [premiumStateKey],
+      limit: 1,
+    );
+
+    return result.isNotEmpty && result.first['value'] == 'true';
+  }
+
+  Future<void> setPremiumAccess(bool enabled, {String? userId}) async {
+    final premiumStateKey = await _resolvePremiumStateKey(userId);
+
+    if (kIsWeb) {
+      await _ensureWebDataInitialized();
+      if (enabled) {
+        _webAppState[premiumStateKey] = 'true';
+      } else {
+        _webAppState.remove(premiumStateKey);
+      }
+      return;
+    }
+
+    final db = await database;
+    if (!enabled) {
+      await db.delete('app_state', where: 'key = ?', whereArgs: [premiumStateKey]);
+      return;
+    }
+
+    await db.insert(
+      'app_state',
+      {'key': premiumStateKey, 'value': 'true'},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String> _resolvePremiumStateKey(String? userId) async {
+    final resolvedUserId = userId ?? await getCurrentUserId();
+    return 'premium_access_${resolvedUserId ?? 'guest'}';
+  }
+
   Future<Map<String, dynamic>> signInAsGuest() async {
     final userId = await getOrCreateSessionUserId();
     final user = await getUser(userId);

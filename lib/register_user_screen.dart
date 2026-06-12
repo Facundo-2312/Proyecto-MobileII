@@ -19,6 +19,7 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _submitting = false;
   bool _submittedOnce = false;
+  bool _acceptedTerms = false;
 
   Future<void> _register() async {
     setState(() {
@@ -165,6 +166,66 @@ class _RegisterUserScreenState extends State<RegisterUserScreen> {
                     return 'Las contraseñas no coinciden';
                   }
                   return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              FormField<bool>(
+                initialValue: _acceptedTerms,
+                validator: (value) {
+                  if (value != true) {
+                    return 'Debes aceptar los términos de uso para registrarte';
+                  }
+                  return null;
+                },
+                builder: (field) {
+                  final errorColor = Theme.of(context).colorScheme.error;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CheckboxListTile(
+                        value: field.value ?? false,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text('Acepto los Términos de uso'),
+                        subtitle: const Text(
+                          'Este consentimiento es obligatorio para crear la cuenta.',
+                        ),
+                        onChanged: _submitting
+                            ? null
+                            : (value) {
+                                setState(() {
+                                  _acceptedTerms = value ?? false;
+                                });
+                                field.didChange(_acceptedTerms);
+                              },
+                      ),
+                      Wrap(
+                        spacing: 4,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pushNamed('/terms');
+                            },
+                            child: const Text('Ver términos'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pushNamed('/privacy');
+                            },
+                            child: const Text('Política de privacidad'),
+                          ),
+                        ],
+                      ),
+                      if (field.hasError)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12, top: 4),
+                          child: Text(
+                            field.errorText!,
+                            style: TextStyle(color: errorColor, fontSize: 12),
+                          ),
+                        ),
+                    ],
+                  );
                 },
               ),
               const SizedBox(height: 20),

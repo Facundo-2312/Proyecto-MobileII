@@ -112,6 +112,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _deleteAccount() async {
+    final userId = _user?['id'] as String?;
+    if (userId == null || userId.isEmpty) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar cuenta'),
+          content: const Text(
+            'Esta acción borrará tu cuenta y los datos asociados almacenados localmente en el dispositivo. No se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _db.deleteUser(userId);
+      if (!mounted) return;
+      setState(() {
+        _user = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cuenta eliminada y sesión cerrada correctamente'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo eliminar la cuenta: $e')),
+      );
+    }
+  }
+
   String _resolveProfileValue(String? currentValue, String defaultValue) {
     if (currentValue == null) {
       return defaultValue;
@@ -229,7 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   _buildSettingTile('Notificaciones', 'Recibe alertas de tus pedidos', Icons.notifications),
                   _buildSettingTile('Métodos de pago', 'Administra tus tarjetas', Icons.credit_card),
-                  _buildSettingTile('Privacidad', 'Controla tu privacidad', Icons.lock),
+                  _buildSettingTile(
+                    'Privacidad',
+                    'Consulta cómo se tratan y eliminan tus datos',
+                    Icons.lock,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/privacy');
+                    },
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -282,7 +341,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 12),
                   _buildHelpTile('Preguntas frecuentes', Icons.help_outline),
                   _buildHelpTile('Contactar soporte', Icons.mail_outline),
-                  _buildHelpTile('Términos y condiciones', Icons.description),
+                  _buildHelpTile(
+                    'Términos y condiciones',
+                    Icons.description,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/terms');
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _deleteAccount,
+                      icon: const Icon(Icons.delete_forever),
+                      label: const Text('Eliminar cuenta y datos'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -476,10 +555,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingTile(String title, String subtitle, IconData icon) {
+  Widget _buildSettingTile(
+    String title,
+    String subtitle,
+    IconData icon, {
+    VoidCallback? onTap,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: ListTile(
+        onTap: onTap,
         contentPadding: EdgeInsets.zero,
         leading: Icon(icon, color: Colors.orange),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -492,10 +577,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildHelpTile(String title, IconData icon) {
+  Widget _buildHelpTile(String title, IconData icon, {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: ListTile(
+        onTap: onTap,
         contentPadding: EdgeInsets.zero,
         leading: Icon(icon, color: Colors.orange),
         title: Text(title),

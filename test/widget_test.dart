@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:foodfinder/database_service.dart';
 import 'package:foodfinder/main.dart';
 import 'package:foodfinder/orders_screen.dart';
+import 'package:foodfinder/premium_upgrade_screen.dart';
 import 'package:foodfinder/register_user_screen.dart';
 
 void main() {
@@ -80,6 +81,8 @@ void main() {
       find.widgetWithText(TextFormField, 'Confirmar contraseña'),
       '1234',
     );
+    await tester.tap(find.text('Acepto los Términos de uso'));
+    await tester.pump(const Duration(milliseconds: 200));
 
     await tester.tap(find.text('Crear cuenta'));
     await tester.pump(const Duration(milliseconds: 600));
@@ -87,6 +90,39 @@ void main() {
     final createdUser = await db.getUserByEmail(email);
     expect(createdUser, isNotNull);
     expect(createdUser?['name'], 'Usuario Test');
+  });
+
+  testWidgets('Register user screen requires terms acceptance', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: RegisterUserScreen()),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre completo'),
+      'Usuario Sin Términos',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'sin_terminos@mail.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Contraseña'),
+      '1234',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Confirmar contraseña'),
+      '1234',
+    );
+
+    await tester.tap(find.text('Crear cuenta'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.text('Debes aceptar los términos de uso para registrarte'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Home screen has a signup shortcut card', (
@@ -164,5 +200,67 @@ void main() {
     final updatedOrders = await db.getUserOrders(userId);
     final updatedOrder = updatedOrders.firstWhere((order) => order['id'] == orderId);
     expect(updatedOrder['notes'], 'Sin cebolla, por favor');
+  });
+
+  testWidgets('Free users are redirected to the premium wall for locked features', (
+    WidgetTester tester,
+  ) async {
+    final db = DatabaseService();
+    await db.logout();
+    await db.setPremiumAccess(false, userId: 'guest');
+
+    await tester.pumpWidget(const FoodFinderApp());
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.text('Calificaciones'));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(PremiumUpgradeScreen), findsOneWidget);
+    expect(find.text('Suscripción Premium'), findsOneWidget);
+  });
+
+  testWidgets('Premium purchase opens modal, accepts card data and activates plan', (
+    WidgetTester tester,
+  ) async {
+    final db = DatabaseService();
+    await db.logout();
+    await db.setPremiumAccess(false, userId: 'guest');
+
+    await tester.pumpWidget(
+      const MaterialApp(home: PremiumUpgradeScreen()),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.text('Seleccionar Premium'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Datos de pago'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Titular de la tarjeta'),
+      'Usuario Premium',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Número de tarjeta'),
+      '4111111111111111',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Vencimiento'),
+      '12/99',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'CVV'),
+      '123',
+    );
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Comprar Premium'));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('Compra aprobada'), findsOneWidget);
+
+    await tester.tap(find.text('Continuar'));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(await db.hasPremiumAccess(userId: 'guest'), isTrue);
   });
 }
