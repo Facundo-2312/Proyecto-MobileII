@@ -14,13 +14,8 @@ import 'view/wearable/wearable_view.dart';
 
 import 'package:flutter/foundation.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Solo inicializa BD en mobile, no en web
-  if (!kIsWeb) {
-    await DatabaseService().database;
-  }
 
   runApp(const FoodFinderApp());
 }
@@ -41,7 +36,7 @@ class FoodFinderApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: Colors.grey[50],
       ),
-      home: const FoodFinderHome(),
+      home: const AppBootstrapScreen(),
       routes: {
         '/products': (context) => const ProductsScreen(),
         '/orders': (context) => const OrdersScreen(),
@@ -60,6 +55,157 @@ class FoodFinderApp extends StatelessWidget {
       },
       onUnknownRoute: (settings) => MaterialPageRoute(
         builder: (_) => MissingRestaurantScreen(routeName: settings.name),
+      ),
+    );
+  }
+}
+
+class AppBootstrapScreen extends StatefulWidget {
+  const AppBootstrapScreen({super.key});
+
+  @override
+  State<AppBootstrapScreen> createState() => _AppBootstrapScreenState();
+}
+
+class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
+  late final Future<void> _startupFuture = _initializeApp();
+
+  Future<void> _initializeApp() async {
+    if (!kIsWeb) {
+      await DatabaseService().database;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _startupFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return StartupErrorScreen(error: snapshot.error);
+        }
+
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const StartupLoadingScreen();
+        }
+
+        return const FoodFinderHome();
+      },
+    );
+  }
+}
+
+class StartupLoadingScreen extends StatelessWidget {
+  const StartupLoadingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.orange.shade50,
+              Colors.white,
+              Colors.orange.shade100,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 132,
+                  height: 132,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withAlpha(46),
+                        blurRadius: 28,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(18),
+                  child: Image.asset('assets/branding/app_icon.png'),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  'FoodFinder',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Cargando restaurantes, perfil y mapa...',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.orange.shade700,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: 220,
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    borderRadius: BorderRadius.circular(99),
+                    color: colorScheme.primary,
+                    backgroundColor: Colors.orange.shade100,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StartupErrorScreen extends StatelessWidget {
+  final Object? error;
+
+  const StartupErrorScreen({super.key, this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 60,
+                color: Colors.orange.shade700,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No se pudo iniciar la aplicación.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Revisa la configuración local e inténtalo nuevamente.${error == null ? '' : '\n\n$error'}',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -132,11 +278,7 @@ class MissingRestaurantScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 56,
-                color: Colors.orange.shade700,
-              ),
+              Icon(Icons.info_outline, size: 56, color: Colors.orange.shade700),
               const SizedBox(height: 16),
               const Text(
                 'No se pudo cargar este restaurante.',
@@ -147,18 +289,16 @@ class MissingRestaurantScreen extends StatelessWidget {
               Text(
                 routeName == '/details'
                     ? 'La ruta de detalle ya no se abre directamente en web. Vuelve al inicio y abre el restaurante nuevamente desde la lista.'
-                  : routeName == '/wearable'
-                  ? 'La vista smartwatch es una simulación de interfaz dentro de la app principal.'
-                  : 'La ruta solicitada no está disponible. Vuelve al inicio y navega nuevamente desde la aplicación.',
+                    : routeName == '/wearable'
+                    ? 'La vista smartwatch es una simulación de interfaz dentro de la app principal.'
+                    : 'La ruta solicitada no está disponible. Vuelve al inicio y navega nuevamente desde la aplicación.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const FoodFinderHome(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const FoodFinderHome()),
                     (route) => false,
                   );
                 },
