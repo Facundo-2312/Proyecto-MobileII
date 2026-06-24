@@ -30,7 +30,7 @@ android {
             providers.gradleProperty("MAPS_API_KEY").orNull
                 ?: System.getenv("MAPS_API_KEY")
                 ?: ""
-        manifestPlaceholders["com.google.android.geo.API_KEY"] = mapsApiKey
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

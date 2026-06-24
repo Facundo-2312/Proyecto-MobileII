@@ -44,6 +44,7 @@ class _MapScreenState extends State<MapScreen> {
   bool isNavigating = false;
   RouteInfo? currentRouteInfo;
   int selectedRouteOptionIndex = 0;
+  bool _locationPermissionGranted = false;
 
   @override
   void initState() {
@@ -53,6 +54,8 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _initializeApp() async {
     try {
+      final hasLocationPermission =
+          await locationService.checkAndRequestPermissions();
       await restaurantService.initialize();
       final initialLocation = await locationService.getCurrentLocation();
 
@@ -62,6 +65,7 @@ class _MapScreenState extends State<MapScreen> {
           initialLocation ?? locationService.getLastKnownLocation();
 
       setState(() {
+        _locationPermissionGranted = hasLocationPermission;
         userLocation = effectiveLocation;
         nearbyRestaurants = restaurantService.getNearbyRestaurants(
           effectiveLocation,
@@ -121,9 +125,16 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _updateLocation() async {
     setState(() => isLoading = true);
 
+    final hasLocationPermission =
+        await locationService.checkAndRequestPermissions();
     final nextLocation = await locationService.getCurrentLocation();
     final effectiveLocation =
         nextLocation ?? locationService.getLastKnownLocation();
+    if (mounted) {
+      setState(() {
+        _locationPermissionGranted = hasLocationPermission;
+      });
+    }
     await _handleLocationUpdate(effectiveLocation);
   }
 
@@ -539,8 +550,8 @@ class _MapScreenState extends State<MapScreen> {
       ),
       markers: markers,
       polylines: polylines,
-      myLocationEnabled: true,
-      myLocationButtonEnabled: false,
+      myLocationEnabled: _locationPermissionGranted,
+      myLocationButtonEnabled: _locationPermissionGranted,
       zoomControlsEnabled: false,
     );
   }
