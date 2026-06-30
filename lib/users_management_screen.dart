@@ -522,11 +522,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                 ),
                 Text(
                   'Creado: ${_formatCreatedAt(user['created_at'] as String?)}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
                 ),
                 Text(
                   'ID: ${user['id']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
                 ),
               ],
             ),

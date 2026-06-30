@@ -27,14 +27,14 @@ class RestaurantListWidget extends StatelessWidget {
             Icon(
               Icons.restaurant_menu,
               size: 64,
-              color: Colors.grey[400],
+              color: Colors.grey[700],
             ),
             const SizedBox(height: 16),
             Text(
               'No hay restaurantes cercanos',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Colors.grey[700],
               ),
             ),
             const SizedBox(height: 16),

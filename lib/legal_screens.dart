@@ -121,7 +121,7 @@ class _LegalDocumentScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   intro,
-                  style: const TextStyle(color: Colors.white70, height: 1.35),
+                  style: const TextStyle(color: Colors.white, height: 1.35),
                 ),
               ],
             ),

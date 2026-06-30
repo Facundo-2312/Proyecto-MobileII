@@ -153,7 +153,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               Text(
                                 item['description'] ?? '',
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: Colors.grey[700],
                                   fontSize: 12,
                                 ),
                               ),

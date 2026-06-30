@@ -165,7 +165,7 @@ class _WearableViewState extends State<WearableView> {
                                 ),
                               ),
                             ),
-                            Icon(Icons.watch, color: Colors.white70, size: 11),
+                            Icon(Icons.watch, color: Colors.white, size: 11),
                           ],
                         ),
                         const SizedBox(height: 2),
@@ -184,7 +184,7 @@ class _WearableViewState extends State<WearableView> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.white,
                               fontSize: 7,
                               fontWeight: FontWeight.w600,
                             ),
@@ -473,7 +473,7 @@ class _ArrowButton extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 11, color: Colors.white70),
+        child: Icon(icon, size: 11, color: Colors.white),
       ),
     );
   }
@@ -950,7 +950,7 @@ class _WearableProductsMiniScreenState extends State<_WearableProductsMiniScreen
                                   }
                                 });
                               },
-                              child: const Icon(Icons.remove, color: Colors.white70, size: 11),
+                              child: const Icon(Icons.remove, color: Colors.white, size: 11),
                             ),
                             SizedBox(
                               width: 12,
@@ -1055,7 +1055,7 @@ class _WearableOrdersMiniScreenState extends State<_WearableOrdersMiniScreen> {
               ? const Center(
                   child: Text(
                     'Sin pedidos',
-                    style: TextStyle(color: Colors.white70, fontSize: 9),
+                    style: TextStyle(color: Colors.white, fontSize: 9),
                   ),
                 )
               : ListView.builder(
@@ -1187,7 +1187,7 @@ class _WearableProfileMiniScreenState extends State<_WearableProfileMiniScreen> 
                         email,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white70, fontSize: 7),
+                        style: const TextStyle(color: Colors.white, fontSize: 7),
                       ),
                       const SizedBox(height: 2),
                       Text(

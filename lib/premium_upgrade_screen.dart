@@ -148,9 +148,16 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen> {
                 Chip(
                   label: Text(
                     _hasPremiumAccess ? 'Plan activo: Premium' : 'Plan actual: Gratuito',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.orange.shade900,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  backgroundColor: Colors.white.withValues(alpha: 0.16),
+                  backgroundColor: Colors.white.withValues(alpha: 0.9),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    side: BorderSide(color: Colors.orange.shade200),
+                  ),
                   side: BorderSide.none,
                 ),
                 const SizedBox(height: 12),
@@ -165,7 +172,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Simulación de monetización con desbloqueo visual de funciones premium y compra guiada desde un modal de tarjeta.',
-                  style: TextStyle(color: Colors.white70, height: 1.35),
+                  style: TextStyle(color: Colors.white, height: 1.35),
                 ),
               ],
             ),
@@ -629,6 +636,8 @@ class _PlanCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: accentColor.withValues(alpha: 0.24),
+                    disabledForegroundColor: Colors.black87,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(actionLabel),

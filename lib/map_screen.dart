@@ -626,7 +626,7 @@ class _MapScreenState extends State<MapScreen> {
             padding: const EdgeInsets.all(16),
             child: Text(
               'No hay restaurantes disponibles.',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[700]),
             ),
           ),
         ),
@@ -903,7 +903,7 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '${step.distanceText} · ${step.durationText}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                 ),
               ],
             ),
@@ -934,7 +934,7 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                 ),
                 Text(
                   value,
@@ -1076,7 +1076,7 @@ class _MapScreenState extends State<MapScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[400],
+                color: Colors.grey[700],
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1209,7 +1209,7 @@ class _MapScreenState extends State<MapScreen> {
                       ? Center(
                           child: Text(
                             'No hay restaurantes disponibles.',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: Colors.grey[700]),
                           ),
                         )
                       : ListView.builder(

@@ -76,7 +76,7 @@ class RestaurantMarkerPopup extends StatelessWidget {
                   restaurant.address,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: Colors.black87,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

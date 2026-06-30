@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: isUltraNarrow
                               ? 8
                               : (isVeryNarrow ? 10 : (isMobile ? 12 : 14)),
-                          color: Colors.white70,
+                          color: Colors.white,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -350,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   subtitle,
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: Colors.grey[700],
                                     fontSize: isUltraNarrow ? 7 : (isVeryNarrow ? 9 : 12),
                                   ),
                                   maxLines: isUltraNarrow ? 1 : 2,
@@ -363,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Icon(
                             isLocked ? Icons.lock : Icons.arrow_forward_ios,
                             size: isUltraNarrow ? 10 : (isVeryNarrow ? 12 : 16),
-                            color: Colors.grey[500],
+                            color: Colors.grey[700],
                           ),
                         ],
                       )
@@ -386,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 2),
                           Text(
                             subtitle,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                            style: TextStyle(color: Colors.grey[700], fontSize: 13),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),

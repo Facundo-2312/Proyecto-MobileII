@@ -35,6 +35,38 @@ class FoodFinderApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: Colors.grey[50],
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(64, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            disabledBackgroundColor: Colors.orange.shade200,
+            disabledForegroundColor: Colors.orange.shade900,
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(64, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            disabledBackgroundColor: Colors.orange.shade200,
+            disabledForegroundColor: Colors.orange.shade900,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(64, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            foregroundColor: Colors.orange.shade900,
+            disabledForegroundColor: Colors.grey.shade500,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            minimumSize: const Size(64, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            foregroundColor: Colors.orange.shade900,
+            disabledForegroundColor: Colors.grey.shade500,
+          ),
+        ),
       ),
       home: const AppBootstrapScreen(),
       routes: {

@@ -243,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(email, style: const TextStyle(color: Colors.white70)),
+                  Text(email, style: const TextStyle(color: Colors.white)),
                   const SizedBox(height: 8),
                   Chip(
                     label: Text(
@@ -423,7 +423,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(height: 4),
                   Text(
                     'Accede como admin o usuario registrado',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -541,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
                 ),
                 Text(
                   value,
@@ -570,7 +570,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(
           subtitle,
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          style: TextStyle(color: Colors.grey[700], fontSize: 12),
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),

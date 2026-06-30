@@ -533,11 +533,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[400]),
+                  Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[700]),
                   const SizedBox(height: 16),
                   Text(
                     'No tienes pedidos',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 16),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -572,7 +572,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 8),
-                            Text('ID: ${order['id']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                            Text('ID: ${order['id']}', style: TextStyle(color: Colors.grey[700], fontSize: 12)),
                             Text('Total: \$${order['total_price']}', style: const TextStyle(fontWeight: FontWeight.bold)),
                             if ((order['notes'] as String?)?.trim().isNotEmpty ?? false)
                               Text(
