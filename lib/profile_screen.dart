@@ -252,10 +252,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : role == 'manager'
                               ? 'Supervisor'
                               : 'Usuario',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: Colors.orange.shade900,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    backgroundColor: Colors.white.withValues(alpha: 0.18),
-                    side: BorderSide.none,
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: Colors.orange.shade200),
                   ),
                 ],
               ),
